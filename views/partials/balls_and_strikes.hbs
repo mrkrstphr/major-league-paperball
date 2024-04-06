@@ -1,0 +1,47 @@
+
+<div class="balls-and-strikes flex flex-col">
+    <div class="flex space-x-1 items-center">
+    <div class="text-base w-5">B:</div>
+    {{#repeat count=4 start=1}}
+        {{#if betweenInnings}}
+        {{> circle_open}}
+        {{else}}
+        {{#gte count.balls @index}}
+        {{> circle_filled}}
+        {{else}}
+        {{> circle_open}}
+        {{/gte}}
+        {{/if}}
+    {{/repeat}}
+    </div>
+
+    <div class="flex space-x-1 items-center">
+    <div class="text-base w-5">S:</div>
+    {{#repeat count=3 start=1}}
+        {{#if betweenInnings}}
+        {{> circle_open}}
+        {{else}}
+        {{#gte count.strikes @index}}
+        {{> circle_filled}}
+        {{else}}
+        {{> circle_open}}
+        {{/gte}}
+        {{/if}}
+    {{/repeat}}
+    </div>
+
+    <div class="flex space-x-1 items-center">
+    <div class="text-base w-5">O:</div>
+    {{#repeat count=3 start=1}}
+        {{#if betweenInnings}}
+        {{> circle_open}}
+        {{else}}
+        {{#gte count.outs @index}}
+        {{> circle_filled}}
+        {{else}}
+        {{> circle_open}}
+        {{/gte}}
+        {{/if}}
+    {{/repeat}}
+    </div>
+</div>

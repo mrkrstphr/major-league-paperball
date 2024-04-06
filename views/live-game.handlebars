@@ -1,0 +1,22 @@
+<div class='text-2xl p-4'>
+  <div class='mb-4 text-lg pb-2'>
+    <div class='flex-1'>{{inningDescription}}</div>
+  </div>
+  <div class='flex space-x-8 items-center'>
+    <div class='flex flex-col space-y-4' style="width: 28rem">
+      <div class='flex space-x-8 items-center'>
+        {{> scorecard }}
+        {{> bases betweenInnings=betweenInnings runners=runners}}
+        {{> balls_and_strikes betweenInnings=betweenInnings count=count}}
+      </div>
+
+      <div>
+        <div class='text-lg'>
+          {{lastPlayDescription}}
+        </div>
+      </div>
+    </div>
+
+    {{> matchup betweenInnings=betweenInnings matchup=matchup}}
+  </div>
+</div>

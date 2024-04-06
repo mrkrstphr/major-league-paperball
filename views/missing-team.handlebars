@@ -1,0 +1,21 @@
+<p class="mb-3">
+  It looks like you're missing a team! You'll need to place a variable inside a
+  <code>.env</code>
+  file with the ID of the team you want to follow:
+</p>
+
+<pre class="mb-3">TEAM_ID=1234</pre>
+
+<p class="mb-6">Replace <code>1234</code> with a team ID from below:</p>
+
+<div class="flex space-x-2">
+  {{#each groups as |group|}}
+    <div class="flex-1">
+      <ul>
+        {{#each group as |team|}}
+          <li><code>{{this.id}}</code> <span class="pl-3">{{this.name}}</span></li>
+        {{/each}}
+      </ul>
+    </div>
+  {{/each}}
+</div>

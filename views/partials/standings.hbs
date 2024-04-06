@@ -1,0 +1,79 @@
+<div>
+  <div class='flow-root'>
+    <div class=''>
+      <div class='inline-block min-w-full align-middle'>
+        <table class='min-w-full divide-y divide-black'>
+          <thead>
+            <tr>
+              <th
+                scope='col'
+                class='py-3.5 pl-4 pr-3 text-left text-base font-semibold sm:pl-0'
+              >
+                Team
+              </th>
+              <th
+                scope='col'
+                class='px-3 py-3.5 text-right text-base font-semibold text-gray-900'
+              >
+                W
+              </th>
+              <th
+                scope='col'
+                class='px-3 py-3.5 text-right text-base font-semibold text-gray-900'
+              >
+                L
+              </th>
+              <th
+                scope='col'
+                class='px-3 py-3.5 text-right text-base font-semibold text-gray-900'
+              >
+                PCT
+              </th>
+              <th
+                scope='col'
+                class='px-3 py-3.5 text-right text-base font-semibold text-gray-900'
+              >
+                GB
+              </th>
+              <th
+                scope='col'
+                class='px-3 py-3.5 text-right text-base font-semibold text-gray-900'
+              >
+                STRK
+              </th>
+              <th
+                scope='col'
+                class='px-3 py-3.5 text-right text-base font-semibold'
+              >
+                L10
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each teams as |team|}}
+            <tr>
+              <td class='text-left text-lg font-semibold'>
+                {{team.team}}
+              </td>
+              <td class='text-right text-lg px-3'>{{team.wins}}</td>
+              <td class='text-right text-lg px-3'>{{team.losses}}</td>
+              <td class='text-right text-lg px-3'>
+                {{team.winningPercentage}}
+              </td>
+              <td class='text-right text-lg px-3'>
+                {{team.gamesBack}}
+              </td>
+              <td class='text-right text-lg px-3'>
+                {{team.streak.streakCode}}
+              </td>
+              <td class='text-right text-lg px-3'>
+                {{team.lastTen}}
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
