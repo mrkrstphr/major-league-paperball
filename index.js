@@ -17,7 +17,7 @@ const port = 3000;
 const partialsDir = 'views/partials';
 
 const config = {
-  bin: '/opt/homebrew/bin/chromium',
+  bin: process.env.BROWSER,
   display_width: 800,
   display_height: 480,
   wait: 8,
@@ -47,7 +47,7 @@ const publishScreenshot = async () => {
     'screenshot.png',
   ]);
 
-  return new Promise(() => {
+  return new Promise((resolve) => {
     pythonProcess.on('exit', (code) => {
       resolve(code);
     });
@@ -93,8 +93,6 @@ app.listen(port, () => {
 
 async function runTick() {
   const nextState = await getNextState(lastState);
-
-  // console.log('nextState', JSON.stringify(nextState, null, 2));
 
   if (!equals(nextState, lastState)) {
     lastState = nextState;
