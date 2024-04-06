@@ -1,5 +1,7 @@
 ## Setup
 
+TL;DR: Setup your PI, install NodeJS, Python3, and chromium-browser. Clone the repo, copy `.env.example` to `.env`, adjust the values within, and then keep the app running with pm2.
+
 ### Setup Your Raspberry Pi
 
 This is just like setting up any other Raspberry Pi. I recommend using Raspberry Pi OS, but any other OS that works on Pi should work here, but the individual commands that follow might not.
@@ -66,15 +68,13 @@ cp .env.example .env
 
 Now you should be all set to run the app. Since the app is a NodeJS app (that calls a python script to update the screen), you can use any method of running a NodeJS app. I suggest using PM2, which is a process manager that will keep the app running across crashes (sorry) and reboots.
 
-1. Run `sudo npm install -g pm2` to install `pm2` globally
-2. Run `pm2 startup` to have `pm2` startup on boot
-3. Run `pm2 start "npm start" --name "paperball"` to start the app
-4. Run `pm2 save` to save the configuration
+```
+npm install -g pm2
+pm2 startup
+pm2 start "npm start" --name "paperball"
+pm2 save
+```
 
 The app should now be running and hopefully after a few seconds, your screen will be updated.
 
 If it doesn't appear to be working, you can run `pm2 status` to verify that its running and `pm2 logs` to see any log information that might help understand what went wrong.
-
-```
-
-```

@@ -1,5 +1,5 @@
-import { subMinutes, subSeconds } from 'date-fns';
-import { sortBy, splitEvery } from 'ramda';
+import { subMinutes } from 'date-fns';
+import { isNotNil, sortBy, splitEvery } from 'ramda';
 import {
   getLiveGameFeed,
   getStandingsForLeague,
@@ -25,15 +25,6 @@ const cache = { schedule: undefined, gameEnded: {} };
 const refetchTeamSchedule = async () => {
   const games = await getTeamSchedule(process.env.TEAM_ID);
 
-  // const games = JSON.parse(
-  //   fs.readFileSync('examples/schedule_live_game.json', 'utf-8')
-  // )
-  //   .dates.map(({ games }) => games)
-  //   .flat()
-  //   .filter(Boolean);
-
-  // console.log(games);
-
   cache.schedule = { date: today(), games };
 };
 
@@ -47,7 +38,6 @@ export default async function getNextState(currentState) {
 
   if (!cache.team) {
     cache.team = await getTeamById(process.env.TEAM_ID);
-    console.log(cache.team);
   }
 
   const hasTodaysSchedule = cache.schedule && cache.schedule.date === today();
@@ -55,8 +45,6 @@ export default async function getNextState(currentState) {
   if (!hasTodaysSchedule) {
     await refetchTeamSchedule();
   }
-
-  // console.log('cache.schedule', cache.schedule);
 
   // if we're past a game start time and it's not final, return the live game state
   const liveGame = cache.schedule.games.find(
@@ -153,18 +141,13 @@ async function liveGameState(gameId, currentState) {
 async function gameEndedState(gameId, currentState) {
   // if it's been 20 minutes since we noticed it ended, manually updated
   // the cache to be an ended game so we stop showing it next tick
-  console.log(
-    `ended: ${cache.gameEnded[
-      gameId
-    ].toISOString()}, now: ${new Date().toISOString()}, elapsed: ${
-      cache.gameEnded[gameId] < subSeconds(new Date(), 10)
-    }`
-  );
-  if (cache.gameEnded[gameId] < subSeconds(new Date(), 10)) {
-    console.log(`Looking for game ${gameId} in cache.schedule.games`);
+
+  if (
+    cache.gameEnded[gameId] <
+    subMinutes(new Date(), process.env.GAME_END_DELAY_MINUTES ?? 20)
+  ) {
     cache.schedule.games = cache.schedule.games.map((game) => {
       if (game.gamePk === gameId) {
-        console.log('found game, marking F');
         return {
           ...game,
           status: { abstractGameCode: 'F' },
@@ -218,14 +201,6 @@ async function nextGameAndStandingsState(currentState) {
     return currentState;
   }
 
-  const nextGame = cache.schedule.games.find(
-    (game) =>
-      new Date(game.gameDate) >= new Date() &&
-      game.status.abstractGameCode !== 'F'
-  );
-
-  console.log('nextGame', nextGame);
-
   const standings = await getStandingsForLeague(cache.team.league.id);
 
   const divisionStandings = standings.find(
@@ -242,11 +217,30 @@ async function nextGameAndStandingsState(currentState) {
     lastTen: getLastTen(team),
   }));
 
+  const nextScheduledGame = cache.schedule.games.find(
+    (game) =>
+      new Date(game.gameDate) >= new Date() &&
+      game.status.abstractGameCode !== 'F'
+  );
+
+  const nextGame = isNotNil(nextScheduledGame) && {
+    gameDate: `${new Date(
+      nextScheduledGame.gameDate
+    ).toLocaleDateString()} ${new Date(
+      nextScheduledGame.gameDate
+    ).toLocaleTimeString()}`,
+    description:
+      nextScheduledGame?.teams.home.team.id === cache.team.id
+        ? `${nextScheduledGame.teams.home.team.name} vs ${nextScheduledGame.teams.away.team.name}`
+        : `${nextScheduledGame.teams.away.team.name} at ${nextScheduledGame.teams.home.team.name}`,
+  };
+
   return {
     mode: 'next-game',
     data: {
       lastFetch: new Date(),
       standings: standingsData,
+      nextGame,
     },
   };
 }
