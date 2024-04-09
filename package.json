@@ -1,5 +1,8 @@
 {
+  "name": "major-league-paperball",
+  "description": "Keep tabs on your favorite MLB team on an e-ink screen ",
   "type": "module",
+  "license": "MIT",
   "scripts": {
     "dev": "nodemon -e js,hbs index.js",
     "start": "node index.js"
