@@ -199,6 +199,7 @@ async function gameEndedState(gameId, currentState) {
 }
 
 async function nextGameAndStandingsState(currentState) {
+  // refetch schedule and standings every 20 minutes
   if (
     currentState?.mode === 'next-game' &&
     currentState?.data?.lastFetch >= subMinutes(new Date(), 20)
@@ -228,6 +229,12 @@ async function nextGameAndStandingsState(currentState) {
       game.status.abstractGameCode !== 'F'
   );
 
+  const lastFinishedGame = reverse(cache.schedule.games).find(
+    (game) => game.status.abstractGameCode === 'F'
+  );
+
+  // TODO: Make a helper for these two
+
   const nextGame = isNotNil(nextScheduledGame) && {
     gameDate: `${new Date(
       nextScheduledGame.gameDate
@@ -240,12 +247,28 @@ async function nextGameAndStandingsState(currentState) {
         : `${nextScheduledGame.teams.away.team.name} at ${nextScheduledGame.teams.home.team.name}`,
   };
 
+  const didTeamWin = (game, teamId) =>
+    game.teams.away.team.id === teamId
+      ? game.teams.away.score > game.teams.home.score
+      : game.teams.home.score > game.teams.away.score;
+
+  const previousGame = isNotNil(lastFinishedGame) && {
+    result:
+      (didTeamWin(lastFinishedGame, cache.team.id) ? 'Won' : 'Lost') +
+      ` ${lastFinishedGame.teams.away.score}-${lastFinishedGame.teams.home.score}`,
+    description:
+      nextScheduledGame?.teams.home.team.id === cache.team.id
+        ? `${nextScheduledGame.teams.home.team.name} vs ${nextScheduledGame.teams.away.team.name}`
+        : `${nextScheduledGame.teams.away.team.name} at ${nextScheduledGame.teams.home.team.name}`,
+  };
+
   return {
     mode: 'next-game',
     data: {
       lastFetch: new Date(),
       standings: standingsData,
       nextGame,
+      previousGame,
     },
   };
 }

@@ -1,3 +1,12 @@
-{{> upcoming_game game=nextGame}}
+<div class="flex">
+    <div class="flex-1">
+      {{> previous_game game=previousGame}}
+    </div>
+    <div class="flex-1 text-right">
+      {{> upcoming_game game=nextGame}}
+    </div>
+</div>
+
+<h3 class="mt-8 text-lg font-semibold">Division Standings</h3>
 
 {{> standings teams=standings}}

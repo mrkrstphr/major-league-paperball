@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { addDays } from 'date-fns';
+import { addDays, subDays } from 'date-fns';
 
 const baseUrl = 'https://statsapi.mlb.com/api';
 
@@ -20,20 +20,20 @@ export async function getTeamById(teamId) {
 }
 
 export async function getTeamSchedule(teamId) {
-  const today = new Intl.DateTimeFormat('en-US', {
+  const startDate = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(Date.now());
+  }).format(subDays(Date.now(), 6));
 
-  const sixDays = new Intl.DateTimeFormat('en-US', {
+  const endDate = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
   }).format(addDays(new Date(), 6));
 
   const { data } = await axios.get(
-    `${baseUrl}/v1/schedule?sportId=1&teamId=${teamId}&startDate=${today}&endDate=${sixDays}`
+    `${baseUrl}/v1/schedule?sportId=1&teamId=${teamId}&startDate=${startDate}&endDate=${endDate}`
   );
 
   return data.dates
