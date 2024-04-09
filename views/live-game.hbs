@@ -12,6 +12,7 @@
 
       <div>
         <div class='text-lg'>
+          {{#unless betweenInnings}}<strong>Last Play:</strong>{{/unless}}
           {{lastPlayDescription}}
         </div>
       </div>
@@ -19,4 +20,6 @@
 
     {{> matchup betweenInnings=betweenInnings matchup=matchup}}
   </div>
+
+  {{> last_x_plays plays=last3ScoringPlays}}
 </div>

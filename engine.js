@@ -1,5 +1,5 @@
 import { subMinutes } from 'date-fns';
-import { isNotNil, sortBy, splitEvery } from 'ramda';
+import { isNotNil, reverse, sortBy, splitEvery, take } from 'ramda';
 import {
   getLiveGameFeed,
   getStandingsForLeague,
@@ -17,6 +17,7 @@ import {
   inbetweenInnings,
   lastPlayWithDescription,
   nextTeam,
+  scoringPlays,
   today,
 } from './util.js';
 
@@ -86,6 +87,8 @@ async function liveGameState(gameId, currentState) {
 
   const game = await getLiveGameFeed(gameId);
 
+  const last3ScoringPlays = take(3, reverse(scoringPlays(game)));
+
   // if this game is over...
   if (game.gameData.status.abstractGameCode === 'F') {
     // note the time we first noticed it as ended so we can leave up a final state...
@@ -101,11 +104,13 @@ async function liveGameState(gameId, currentState) {
     inningDescription: `${game.liveData.linescore.inningState} ${game.liveData.linescore.currentInningOrdinal}`,
     lastPlayDescription: inbetweenInnings(game)
       ? `${nextTeam(game)} are up next`
-      : `Last Play: ${lastPlayWithDescription(game)?.result?.description}`,
+      : lastPlayWithDescription(game)?.result?.description,
 
     count: game.liveData?.plays?.currentPlay?.count,
 
     betweenInnings: inbetweenInnings(game),
+
+    last3ScoringPlays,
 
     lineScore: {
       away: {

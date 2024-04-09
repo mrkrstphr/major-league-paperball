@@ -78,3 +78,19 @@ export const getLastTen = (team) => {
 
   return lastTen ? `${lastTen.wins}-${lastTen.losses}` : '';
 };
+
+export const scoringPlays = (game) => {
+  return game.liveData.plays.allPlays
+    .filter((play) => play.about.isScoringPlay)
+    .map((play) => {
+      const halfInning = play.about.halfInning.substring(0, 3);
+
+      return {
+        inningDescription: `${
+          halfInning.charAt(0).toUpperCase() + halfInning.slice(1)
+        } ${play.about.inning}`,
+        score: `${play.result.awayScore}-${play.result.homeScore}`,
+        description: play.result.description,
+      };
+    });
+};
