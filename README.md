@@ -1,3 +1,19 @@
+# Major League Paperball
+
+![preview](preview.jpg)
+
+major-league-paperball is an app that allows you to follow your favorite Major League Baseball (MLB) team, including live game updates, on a Waveshare 7.5" e-ink screen. It assumes you're running the app on a Raspberry Pi, but any device capable of running both Node and Python should work.
+
+The app works by running a Node web-app that uses the [MLB Stats](https://statsapi.mlb.com/docs) to fetch information about a specific team, uses [Puppeteer](https://pptr.dev/) to get a screenshot of the app, and finally uses a small Python script to draw the image to the e-ink screen.
+
+## Shopping List
+
+In order to run this app, I suggest buying the 7.5" Waveshare e-ink screen with Raspberry Pi HAT, as well as any Raspberry Pi capable of running Node, Python, and connecting to the internet.
+
+1.  [Waveshare 7.5" e-ink screen](https://www.waveshare.com/7.5inch-e-paper-hat.htm) [[Amazon US](https://www.amazon.com/dp/B075R4QY3L)]
+2.  Either: [Raspberry Pi Zero W](https://www.raspberrypi.com/products/raspberry-pi-zero-w/)
+3.  OR: [Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/)
+
 ## Setup
 
 TL;DR: Setup your PI, install NodeJS, Python3, and chromium-browser. Clone the repo, copy `.env.example` to `.env`, adjust the values within, and then keep the app running with pm2.
@@ -78,3 +94,22 @@ pm2 save
 The app should now be running and hopefully after a few seconds, your screen will be updated.
 
 If it doesn't appear to be working, you can run `pm2 status` to verify that its running and `pm2 logs` to see any log information that might help understand what went wrong.
+
+## How it Works
+
+The app is primarily a Node app that periodically fetches information from the MLB Stats API. I chose Node because I know JavaScript best, and being a busy dad with a full time job and part time laziness. Honestly, I should just learn how to make a Python web-app and have it be an all Python app.
+
+The code aims to be a good steward of the MLB Stats API as well as the e-ink screen, which means it both fetches data as little as possible and tries not to unnecessarily write to the screen (because of the ugly flicker when updating the screen).
+
+When no game is active, the screen fetches data, by default, every 20 minutes. When a game is active, it's every 20 seconds. If the data fetched is the same as last time, it doesn't bother refreshing the screen.
+
+If there is new data, the app uses Puppeteer to fire up a browser, set the resolution to 800x480, and take a screenshot. It then uses a Python script (since the native code provided by Waveshare is either Python or C) to send the image to the screen.
+
+### States
+
+The app has a few states:
+
+1.  No Game: There's no active game. The screen will show the standings of the division the team belongs to, as well as the result of the previous game (if any), and the details of the next scheduled game (if any).
+2.  Live Game: Shows information about the live game in progress: score, current inning, counts, base runners, last play, and last 3 scoring plays.
+3.  Final: Shows the final score of the last game for about 20 minutes after the game finishes.
+4.  Missing Team: Kindly reminds you that you didn't configure a team to follow.
