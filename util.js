@@ -94,3 +94,10 @@ export const scoringPlays = (game) => {
       };
     });
 };
+
+export const isTeamWinning = (game, teamId) =>
+  game.gameData.teams.away.id === teamId
+    ? game.liveData.linescore.teams.away.runs >
+      game.liveData.linescore.teams.home.runs
+    : game.liveData.linescore.teams.home.runs >
+      game.liveData.linescore.teams.away.runs;

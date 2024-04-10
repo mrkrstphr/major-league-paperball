@@ -6,14 +6,13 @@
     <div class='flex flex-col space-y-4' style="width: 28rem">
       <div class='flex space-x-8 items-center'>
         {{> scorecard }}
-        {{> bases betweenInnings=betweenInnings runners=runners}}
-        {{> balls_and_strikes betweenInnings=betweenInnings count=count}}
+        {{> bases runners=runners}}
+        {{> balls_and_strikes count=count}}
       </div>
 
       <div>
         <div class='text-lg'>
-          {{#unless betweenInnings}}<strong>Last Play:</strong>{{/unless}}
-          {{lastPlayDescription}}
+          <strong>Last Play:</strong> {{lastPlayDescription}}
         </div>
       </div>
     </div>
@@ -23,3 +22,10 @@
 
   {{> last_x_plays plays=last3ScoringPlays}}
 </div>
+
+{{#if betweenInnings}}
+  <div class="absolute bg-black text-white w-full -ml-4 py-4 text-center" style="top: 50%; transform: translateY(-50%);">
+    <div class="text-2xl">{{upNext}} are up next!</div>
+    <div class="text-lg">{{inningDescription}} :: {{teamName}} are {{upOrDown}} {{lineScore.away.runs}}-{{lineScore.home.runs}}</div>
+  </div>
+{{/if}}

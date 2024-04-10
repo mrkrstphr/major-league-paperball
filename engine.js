@@ -15,6 +15,7 @@ import {
   getPitcher,
   getPitcherLine,
   inbetweenInnings,
+  isTeamWinning,
   lastPlayWithDescription,
   nextTeam,
   scoringPlays,
@@ -101,10 +102,12 @@ async function liveGameState(gameId, currentState) {
 
   // otherwise the game is live...
   const data = {
+    teamName: cache.team.teamName,
     inningDescription: `${game.liveData.linescore.inningState} ${game.liveData.linescore.currentInningOrdinal}`,
-    lastPlayDescription: inbetweenInnings(game)
-      ? `${nextTeam(game)} are up next`
-      : lastPlayWithDescription(game)?.result?.description,
+    lastPlayDescription: lastPlayWithDescription(game)?.result?.description,
+    upNext: inbetweenInnings(game) && nextTeam(game),
+
+    upOrDown: isTeamWinning(game, cache.team.id) ? 'up' : 'down',
 
     count: game.liveData?.plays?.currentPlay?.count,
 
