@@ -4,6 +4,7 @@ import fs from 'fs';
 import handlebars from 'handlebars';
 import handlebarsRepeat from 'handlebars-helper-repeat';
 import path from 'path';
+import { clone } from 'ramda';
 import { getState } from './state.js';
 
 const partialsDir = 'views/partials';
@@ -38,7 +39,7 @@ app.set('views', './views');
 app.get('/', (_, res) => {
   const state = getState();
 
-  res.render(state.mode, state.data);
+  res.render(state.mode, clone(state.data));
 });
 
 export default app;

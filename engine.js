@@ -202,13 +202,12 @@ async function nextGameAndStandingsState(currentState) {
   // refetch schedule and standings every 20 minutes
   if (
     currentState?.mode === 'next-game' &&
-    currentState?.data?.lastFetch >= subMinutes(new Date(), 20)
+    currentState?.lastFetch >= subMinutes(new Date(), 20)
   ) {
     return currentState;
   }
 
   const standings = await getStandingsForLeague(cache.team.league.id);
-
   const divisionStandings = standings.find(
     (record) => record.division.id === cache.team.division.id
   );
@@ -265,10 +264,10 @@ async function nextGameAndStandingsState(currentState) {
   return {
     mode: 'next-game',
     data: {
-      lastFetch: new Date(),
       standings: standingsData,
       nextGame,
       previousGame,
     },
+    lastFetch: new Date(),
   };
 }

@@ -42,9 +42,16 @@ const publishScreenshot = async () => {
 };
 
 async function runTick() {
-  const nextState = await getNextState(getState());
+  const currentState = getState();
+  const nextState = await getNextState(currentState);
 
-  if (!equals(nextState, getState())) {
+  const hasStateChanged =
+    !equals(nextState.data, currentState.data) ||
+    nextState.mode !== currentState.mode;
+
+  if (hasStateChanged) {
+    console.info('State changed:', nextState.mode);
+
     setState(nextState);
 
     await takeScreenshot();
