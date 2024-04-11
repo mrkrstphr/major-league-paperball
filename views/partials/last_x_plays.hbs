@@ -1,14 +1,14 @@
 {{#if plays}}
 <h3 class='text-lg mt-4'>Last Scoring Plays</h3>
 
-<table class='mt-2 text-base'>
+<table class='mt-2 text-base w-full'>
   {{#each plays as |play|}}
     <tr>
       <td
-        class='pr-4 align-top whitespace-nowrap'
+        class='pr-4 align-top whitespace-nowrap w-16'
       >{{play.inningDescription}}</td>
       <td>{{play.description}}</td>
-      <td class='pl-4 align-top whitespace-nowrap'>{{play.score}}</td>
+      <td class='pl-4 align-top whitespace-nowrap w-16 text-right'>{{play.score}}</td>
     </tr>
   {{/each}}
 </table>
