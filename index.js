@@ -1,11 +1,12 @@
 import { spawn } from 'child_process';
 import { CronJob } from 'cron';
 import 'dotenv/config';
+import { existsSync } from 'fs';
 import puppeteer from 'puppeteer-core';
 import { equals } from 'ramda';
+import getNextState from './app/engine/index.js';
 import server from './app/server.js';
 import { getState, setState } from './app/state.js';
-import getNextState from './engine.js';
 
 const fileName = 'screenshot.png';
 const port = 3000;

@@ -6,7 +6,7 @@ import {
   getTeamById,
   getTeamSchedule,
   getTeams,
-} from './api.js';
+} from '../api.js';
 import {
   betweenInnings,
   formatDateTime,
@@ -23,7 +23,7 @@ import {
   nextTeam,
   scoringPlays,
   today,
-} from './util.js';
+} from '../utils.js';
 
 const cache = { schedule: undefined, gameEnded: {} };
 

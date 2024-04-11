@@ -7,7 +7,7 @@ import path from 'path';
 import { clone } from 'ramda';
 import { getState } from './state.js';
 
-const partialsDir = 'views/partials';
+const partialsDir = 'app/views/partials';
 
 handlebars.registerHelper('repeat', handlebarsRepeat);
 handlebars.registerHelper('gte', function (a, b) {
@@ -34,7 +34,7 @@ const app = express();
 
 app.engine('.hbs', engine({ extname: '.hbs' }));
 app.set('view engine', '.hbs');
-app.set('views', './views');
+app.set('views', './app/views');
 
 app.get('/', (_, res) => {
   const state = getState();
