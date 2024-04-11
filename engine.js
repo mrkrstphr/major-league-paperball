@@ -8,13 +8,16 @@ import {
   getTeams,
 } from './api.js';
 import {
+  betweenInnings,
+  formatDateTime,
+  gameResult,
+  gameVsOrAatDescription,
   getBaseRunners,
   getBatter,
   getBatterLine,
   getLastTen,
   getPitcher,
   getPitcherLine,
-  inbetweenInnings,
   isTeamWinning,
   lastPlayWithDescription,
   nextTeam,
@@ -105,15 +108,19 @@ async function liveGameState(gameId, currentState) {
     teamName: cache.team.teamName,
     inningDescription: `${game.liveData.linescore.inningState} ${game.liveData.linescore.currentInningOrdinal}`,
     lastPlayDescription: lastPlayWithDescription(game)?.result?.description,
-    upNext: inbetweenInnings(game) && nextTeam(game),
+    upNext: betweenInnings(game) && nextTeam(game),
 
     upOrDown: isTeamWinning(game, cache.team.id) ? 'up' : 'down',
 
     count: game.liveData?.plays?.currentPlay?.count,
 
-    betweenInnings: inbetweenInnings(game),
+    betweenInnings: betweenInnings(game),
 
     last3ScoringPlays,
+
+    hasRuns:
+      game.liveData.linescore.teams.away.runs > 0 ||
+      game.liveData.linescore.teams.home.runs > 0,
 
     lineScore: {
       away: {
@@ -178,7 +185,7 @@ async function gameEndedState(gameId, currentState) {
   return {
     mode: 'final-game',
     data: {
-      lastPlayDescription: inbetweenInnings(game)
+      lastPlayDescription: betweenInnings(game)
         ? `${nextTeam(game)} are up next`
         : `Last Play: ${lastPlayWithDescription(game)?.result?.description}`,
       lineScore: {
@@ -235,33 +242,14 @@ async function nextGameAndStandingsState(currentState) {
     (game) => game.status.abstractGameCode === 'F'
   );
 
-  // TODO: Make a helper for these two
-
   const nextGame = isNotNil(nextScheduledGame) && {
-    gameDate: `${new Date(
-      nextScheduledGame.gameDate
-    ).toLocaleDateString()} ${new Date(
-      nextScheduledGame.gameDate
-    ).toLocaleTimeString()}`,
-    description:
-      nextScheduledGame?.teams.home.team.id === cache.team.id
-        ? `${nextScheduledGame.teams.home.team.name} vs ${nextScheduledGame.teams.away.team.name}`
-        : `${nextScheduledGame.teams.away.team.name} at ${nextScheduledGame.teams.home.team.name}`,
+    gameDate: `${formatDateTime(nextScheduledGame.gameDate)}`,
+    description: gameVsOrAatDescription(nextScheduledGame, cache.team),
   };
 
-  const didTeamWin = (game, teamId) =>
-    game.teams.away.team.id === teamId
-      ? game.teams.away.score > game.teams.home.score
-      : game.teams.home.score > game.teams.away.score;
-
   const previousGame = isNotNil(lastFinishedGame) && {
-    result:
-      (didTeamWin(lastFinishedGame, cache.team.id) ? 'Won' : 'Lost') +
-      ` ${lastFinishedGame.teams.away.score}-${lastFinishedGame.teams.home.score}`,
-    description:
-      nextScheduledGame?.teams.home.team.id === cache.team.id
-        ? `${nextScheduledGame.teams.home.team.name} vs ${nextScheduledGame.teams.away.team.name}`
-        : `${nextScheduledGame.teams.away.team.name} at ${nextScheduledGame.teams.home.team.name}`,
+    result: gameResult(lastFinishedGame, cache.team),
+    description: gameVsOrAatDescription(lastFinishedGame, cache.team),
   };
 
   return {

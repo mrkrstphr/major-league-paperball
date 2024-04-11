@@ -26,6 +26,9 @@
 {{#if betweenInnings}}
   <div class="absolute bg-black text-white w-full -ml-4 py-4 text-center" style="top: 50%; transform: translateY(-50%);">
     <div class="text-2xl">{{upNext}} are up next!</div>
-    <div class="text-lg">{{inningDescription}} :: {{teamName}} are {{upOrDown}} {{lineScore.away.runs}}-{{lineScore.home.runs}}</div>
+    <div class="text-lg">
+      {{inningDescription}}
+      {{#if hasRuns}} :: {{teamName}} are {{upOrDown}} {{lineScore.away.runs}}-{{lineScore.home.runs}} {{/if}}
+    </div>
   </div>
 {{/if}}

@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { isNil, isNotNil } from 'ramda';
 
 export const today = () => justDate();
@@ -22,7 +23,7 @@ export const endOfInning = (game) =>
 export const middleOfInning = (game) =>
   game.liveData?.linescore?.inningState === 'Middle';
 
-export const inbetweenInnings = (game) =>
+export const betweenInnings = (game) =>
   endOfInning(game) || middleOfInning(game);
 
 export const lastPlayWithDescription = (game) =>
@@ -101,3 +102,43 @@ export const isTeamWinning = (game, teamId) =>
       game.liveData.linescore.teams.home.runs
     : game.liveData.linescore.teams.home.runs >
       game.liveData.linescore.teams.away.runs;
+
+export const wasGamePostponed = (game) => game.status.codedGameState === 'D';
+
+export const didTeamWin = (game, teamId) =>
+  game.teams.away.team.id === teamId
+    ? game.teams.away.score > game.teams.home.score
+    : game.teams.home.score > game.teams.away.score;
+
+export const gameResult = (game, followedTeam) => {
+  if (wasGamePostponed(game)) {
+    return (
+      'Postponed' +
+      (game.rescheduleDate ? ` to ${formatDateTime(game.rescheduleDate)}` : '')
+    );
+  }
+
+  return (
+    (didTeamWin(game, followedTeam.id) ? 'Won' : 'Lost') +
+    ` ${game.teams.away.score}-${game.teams.home.score}`
+  );
+};
+
+export const formatDateTime = (date) => {
+  const doubleDate = new Date(date);
+
+  switch (process.env.DATE_FORMAT) {
+    case 'american':
+      return format(doubleDate, 'L/d h:mm a');
+
+    case 'world':
+      return format(doubleDate, 'd/L H:mm');
+  }
+
+  return doubleDate.toLocaleString();
+};
+
+export const gameVsOrAatDescription = (scheduledGame, followedTeam) =>
+  scheduledGame?.teams.home.team.id === followedTeam.id
+    ? `${scheduledGame.teams.home.team.name} vs ${scheduledGame.teams.away.team.name}`
+    : `${scheduledGame.teams.away.team.name} at ${scheduledGame.teams.home.team.name}`;
