@@ -32,3 +32,12 @@
     </div>
   </div>
 {{/if}}
+
+{{#if isFinal}}
+  <div class="absolute bg-black text-white w-full -ml-4 py-4 text-center" style="top: 50%; transform: translateY(-50%);">
+    <div class="text-2xl">{{winner.locationName}} wins {{winnerScore}}-{{loserScore}}!</div>
+    <div class="text-lg">
+      Final{{#gt inningNumber 9}}/{{inningNumber}}{{/gt}}
+    </div>
+  </div>
+{{/if}}

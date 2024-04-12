@@ -28,7 +28,7 @@ export const betweenInnings = (game) =>
 
 export const lastPlayWithDescription = (game) =>
   game.liveData.plays.allPlays.findLast(
-    (play) => !isNil(play.result?.description)
+    (play) => !isNil(play.result?.description),
   );
 
 export const nextTeam = (game) => {
@@ -74,7 +74,7 @@ export const getBatterLine = (game) => {
 
 export const getLastTen = (team) => {
   const lastTen = team.records.splitRecords.find(
-    (record) => record.type === 'lastTen'
+    (record) => record.type === 'lastTen',
   );
 
   return lastTen ? `${lastTen.wins}-${lastTen.losses}` : '';
@@ -109,6 +109,24 @@ export const didTeamWin = (game, teamId) =>
   game.teams.away.team.id === teamId
     ? game.teams.away.score > game.teams.home.score
     : game.teams.home.score > game.teams.away.score;
+
+export const getWinningTeam = (game) =>
+  game.liveData.linescore.teams.away.runs >
+  game.liveData.linescore.teams.home.runs
+    ? game.gameData.teams.away
+    : game.gameData.teams.home;
+
+export const getWinnerScore = (game) =>
+  game.liveData.linescore.teams.away.runs >
+  game.liveData.linescore.teams.home.runs
+    ? game.liveData.linescore.teams.away.runs
+    : game.liveData.linescore.teams.home.runs;
+
+export const getLoserScore = (game) =>
+  game.liveData.linescore.teams.away.runs <
+  game.liveData.linescore.teams.home.runs
+    ? game.liveData.linescore.teams.away.runs
+    : game.liveData.linescore.teams.home.runs;
 
 export const gameResult = (game, followedTeam) => {
   if (wasGamePostponed(game)) {

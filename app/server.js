@@ -10,6 +10,10 @@ import { getState } from './state.js';
 const partialsDir = 'app/views/partials';
 
 handlebars.registerHelper('repeat', handlebarsRepeat);
+handlebars.registerHelper('gt', function (a, b) {
+  var next = arguments[arguments.length - 1];
+  return a > b ? next.fn(this) : next.inverse(this);
+});
 handlebars.registerHelper('gte', function (a, b) {
   var next = arguments[arguments.length - 1];
   return a >= b ? next.fn(this) : next.inverse(this);
@@ -25,7 +29,7 @@ fs.readdirSync(partialsDir).forEach((filename) => {
 
     handlebars.registerPartial(
       name,
-      fs.readFileSync(path.join(partialsDir, filename), 'utf-8')
+      fs.readFileSync(path.join(partialsDir, filename), 'utf-8'),
     );
   }
 });
