@@ -1,4 +1,5 @@
 import { subMinutes } from 'date-fns';
+import { mkdir, writeFile } from 'fs/promises';
 import { reverse, take } from 'ramda';
 import { getLiveGameFeed } from '../api.js';
 import {
@@ -44,6 +45,17 @@ export default async function liveGameState(gameId, cache, currentState) {
 
   const game = await getLiveGameFeed(gameId);
   const last3ScoringPlays = take(3, reverse(scoringPlays(game)));
+
+  if (process.env.DEBUG_DUMP_GAME) {
+    if (game.liveData.plays.currentPlay.result.event) {
+      await mkdir(`debug/${gameId}`, { recursive: true });
+
+      await writeFile(
+        `debug/${gameId}/${game.liveData.plays.currentPlay.about.endTime}.${game.liveData.plays.currentPlay.result.event}.json`,
+        JSON.stringify(game, null, 2),
+      );
+    }
+  }
 
   // if this game is over...
   if (game.gameData.status.abstractGameCode === 'F') {
