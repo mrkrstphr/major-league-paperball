@@ -1,12 +1,11 @@
 import { spawn } from 'child_process';
 import { CronJob } from 'cron';
 import 'dotenv/config';
-import { existsSync } from 'fs';
 import puppeteer from 'puppeteer-core';
 import { equals } from 'ramda';
-import getNextState from './app/engine/index.js';
-import server from './app/server.js';
-import { getState, setState } from './app/state.js';
+import getNextState from './app/engine/index';
+import server from './app/server';
+import { getState, setState } from './app/state';
 
 const fileName = 'screenshot.png';
 const port = 3000;
@@ -18,7 +17,9 @@ const takeScreenshot = async () => {
   const page = await browser.newPage();
 
   await page.setViewport({
+    // @ts-ignore TODO: fix this
     width: parseInt(process.env.PAPER_WIDTH ?? 800, 10),
+    // @ts-ignore TODO: fix this
     height: parseInt(process.env.PAPER_HEIGHT ?? 480, 10),
   });
 

@@ -1,19 +1,22 @@
 import { sortBy, splitEvery } from 'ramda';
-import { getTeamById, getTeamSchedule, getTeams } from '../api.js';
-import { today } from '../utils.js';
-import { isGameInProgress } from '../utils/schedule.js';
-import liveGameState from './liveGameState.js';
-import standingsState from './standingsState.js';
+import { getTeamById, getTeamSchedule, getTeams } from '../api';
+import { State } from '../state';
+import { today } from '../utils';
+import { isGameInProgress } from '../utils/schedule';
+import liveGameState from './liveGameState';
+import standingsState from './standingsState';
+import type { Cache } from './types';
 
-const cache = { schedule: undefined, gameEnded: {} };
+const cache: Cache = { schedule: undefined, gameEnded: {} };
 
 const refetchTeamSchedule = async () => {
+  // @ts-ignore TODO: fix this
   const games = await getTeamSchedule(process.env.TEAM_ID);
 
   cache.schedule = { date: today(), games };
 };
 
-export default async function getNextState(currentState) {
+export default async function getNextState(currentState: State) {
   // for now, we have to be restarted after editing .env...
   if (currentState.mode === 'missing-team') return currentState;
 
@@ -22,6 +25,7 @@ export default async function getNextState(currentState) {
   }
 
   if (!cache.team) {
+    // @ts-ignore TODO: fix this
     cache.team = await getTeamById(process.env.TEAM_ID);
   }
 
@@ -31,7 +35,7 @@ export default async function getNextState(currentState) {
   }
 
   // if we're past a game start time and it's not final, return the live game state
-  const liveGame = isGameInProgress(cache.schedule);
+  const liveGame = cache.schedule && isGameInProgress(cache.schedule);
 
   if (liveGame) {
     return liveGameState(liveGame.gamePk, cache, currentState);

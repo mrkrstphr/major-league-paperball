@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { isNil, isNotNil } from 'ramda';
+import { LiveGame, Schedule_Game, Standings_Team, Team } from './types';
 
 export const today = () => justDate();
 
@@ -10,28 +11,30 @@ export const justDate = (date = new Date()) =>
     day: '2-digit',
   }).format(date);
 
-export const awayTeam = (game) => game.gameData.teams.away;
-export const homeTeam = (game) => game.gameData.teams.home;
+export const awayTeam = (game: LiveGame) => game.gameData.teams.away;
+export const homeTeam = (game: LiveGame) => game.gameData.teams.home;
 
-export const isAwayTeamBatting = (game) => game.liveData.linescore.isTopInning;
+export const isAwayTeamBatting = (game: LiveGame) =>
+  game.liveData.linescore.isTopInning;
 
-export const topOfInning = (game) => game.liveData.linescore.isTopInning;
+export const topOfInning = (game: LiveGame) =>
+  game.liveData.linescore.isTopInning;
 
-export const endOfInning = (game) =>
+export const endOfInning = (game: LiveGame) =>
   game.liveData?.linescore?.inningState === 'End';
 
-export const middleOfInning = (game) =>
+export const middleOfInning = (game: LiveGame) =>
   game.liveData?.linescore?.inningState === 'Middle';
 
-export const betweenInnings = (game) =>
+export const betweenInnings = (game: LiveGame) =>
   endOfInning(game) || middleOfInning(game);
 
-export const lastPlayWithDescription = (game) =>
+export const lastPlayWithDescription = (game: LiveGame) =>
   game.liveData.plays.allPlays.findLast(
-    (play) => !isNil(play.result?.description),
+    (play) => !isNil(play.result?.description)
   );
 
-export const nextTeam = (game) => {
+export const nextTeam = (game: LiveGame) => {
   if (endOfInning(game)) {
     return awayTeam(game).name;
   }
@@ -39,10 +42,10 @@ export const nextTeam = (game) => {
   return homeTeam(game).name;
 };
 
-export const getOffense = (game) => game.liveData.linescore.offense;
-export const getDefense = (game) => game.liveData.linescore.defense;
+export const getOffense = (game: LiveGame) => game.liveData.linescore.offense;
+export const getDefense = (game: LiveGame) => game.liveData.linescore.defense;
 
-export const getBaseRunners = (game) => {
+export const getBaseRunners = (game: LiveGame) => {
   const { first, second, third } = getOffense(game);
 
   return [
@@ -52,11 +55,11 @@ export const getBaseRunners = (game) => {
   ].filter(isNotNil);
 };
 
-export const getBatter = (game) => getOffense(game).batter;
+export const getBatter = (game: LiveGame) => getOffense(game).batter;
 
-export const getPitcher = (game) => getDefense(game).pitcher;
+export const getPitcher = (game: LiveGame) => getDefense(game).pitcher;
 
-export const getPitcherLine = (game) => {
+export const getPitcherLine = (game: LiveGame) => {
   const defense = getDefense(game);
 
   return game.liveData?.boxscore?.teams?.[
@@ -64,7 +67,7 @@ export const getPitcherLine = (game) => {
   ]?.players?.[`ID${defense?.pitcher.id}`]?.stats?.pitching?.summary;
 };
 
-export const getBatterLine = (game) => {
+export const getBatterLine = (game: LiveGame) => {
   const offense = getOffense(game);
 
   return game.liveData?.boxscore?.teams?.[
@@ -72,15 +75,15 @@ export const getBatterLine = (game) => {
   ]?.players?.[`ID${offense?.batter.id}`]?.stats?.batting?.summary;
 };
 
-export const getLastTen = (team) => {
+export const getLastTen = (team: Standings_Team) => {
   const lastTen = team.records.splitRecords.find(
-    (record) => record.type === 'lastTen',
+    (record) => record.type === 'lastTen'
   );
 
   return lastTen ? `${lastTen.wins}-${lastTen.losses}` : '';
 };
 
-export const scoringPlays = (game) => {
+export const scoringPlays = (game: LiveGame) => {
   return game.liveData.plays.allPlays
     .filter((play) => play.about.isScoringPlay)
     .map((play) => {
@@ -96,39 +99,40 @@ export const scoringPlays = (game) => {
     });
 };
 
-export const isTeamWinning = (game, teamId) =>
+export const isTeamWinning = (game: LiveGame, teamId: number) =>
   game.gameData.teams.away.id === teamId
     ? game.liveData.linescore.teams.away.runs >
       game.liveData.linescore.teams.home.runs
     : game.liveData.linescore.teams.home.runs >
       game.liveData.linescore.teams.away.runs;
 
-export const wasGamePostponed = (game) => game.status.codedGameState === 'D';
+export const wasGamePostponed = (game: Schedule_Game) =>
+  game.status.codedGameState === 'D';
 
-export const didTeamWin = (game, teamId) =>
+export const didTeamWin = (game: Schedule_Game, teamId: number) =>
   game.teams.away.team.id === teamId
     ? game.teams.away.score > game.teams.home.score
     : game.teams.home.score > game.teams.away.score;
 
-export const getWinningTeam = (game) =>
+export const getWinningTeam = (game: LiveGame) =>
   game.liveData.linescore.teams.away.runs >
   game.liveData.linescore.teams.home.runs
     ? game.gameData.teams.away
     : game.gameData.teams.home;
 
-export const getWinnerScore = (game) =>
+export const getWinnerScore = (game: LiveGame) =>
   game.liveData.linescore.teams.away.runs >
   game.liveData.linescore.teams.home.runs
     ? game.liveData.linescore.teams.away.runs
     : game.liveData.linescore.teams.home.runs;
 
-export const getLoserScore = (game) =>
+export const getLoserScore = (game: LiveGame) =>
   game.liveData.linescore.teams.away.runs <
   game.liveData.linescore.teams.home.runs
     ? game.liveData.linescore.teams.away.runs
     : game.liveData.linescore.teams.home.runs;
 
-export const gameResult = (game, followedTeam) => {
+export const gameResult = (game: Schedule_Game, followedTeam: Team) => {
   if (wasGamePostponed(game)) {
     return (
       'Postponed' +
@@ -142,7 +146,7 @@ export const gameResult = (game, followedTeam) => {
   );
 };
 
-export const formatDateTime = (date) => {
+export const formatDateTime = (date: string | Date) => {
   const doubleDate = new Date(date);
 
   switch (process.env.DATE_FORMAT) {
@@ -156,7 +160,10 @@ export const formatDateTime = (date) => {
   return doubleDate.toLocaleString();
 };
 
-export const gameVsOrAatDescription = (scheduledGame, followedTeam) =>
+export const gameVsOrAatDescription = (
+  scheduledGame: Schedule_Game,
+  followedTeam: Team
+) =>
   scheduledGame?.teams.home.team.id === followedTeam.id
     ? `${scheduledGame.teams.home.team.name} vs ${scheduledGame.teams.away.team.name}`
     : `${scheduledGame.teams.away.team.name} at ${scheduledGame.teams.home.team.name}`;

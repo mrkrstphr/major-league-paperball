@@ -1,11 +1,11 @@
 {
   "name": "major-league-paperball",
   "description": "Keep tabs on your favorite MLB team on an e-ink screen ",
-  "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "nodemon -e js,hbs index.js",
-    "start": "node index.js"
+    "build": "tsc",
+    "dev": "nodemon -e js,hbs index.ts",
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "axios": "^1.6.8",
@@ -20,6 +20,12 @@
     "ramda": "^0.29.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.7",
+    "@types/ramda": "^0.29.12",
+    "nodemon": "^3.1.0",
+    "ts-node": "^10.9.2",
+    "tsc": "^2.0.4",
+    "typescript": "^5.4.5"
   }
 }

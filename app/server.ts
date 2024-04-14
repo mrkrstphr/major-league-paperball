@@ -2,24 +2,28 @@ import express from 'express';
 import { engine } from 'express-handlebars';
 import fs from 'fs';
 import handlebars from 'handlebars';
+// @ts-ignore TODO: fix this
 import handlebarsRepeat from 'handlebars-helper-repeat';
 import path from 'path';
 import { clone } from 'ramda';
-import { getState } from './state.js';
+import { getState } from './state';
 
 const partialsDir = 'app/views/partials';
 
 handlebars.registerHelper('repeat', handlebarsRepeat);
 handlebars.registerHelper('gt', function (a, b) {
   var next = arguments[arguments.length - 1];
+  // @ts-ignore TODO: fix this
   return a > b ? next.fn(this) : next.inverse(this);
 });
 handlebars.registerHelper('gte', function (a, b) {
   var next = arguments[arguments.length - 1];
+  // @ts-ignore TODO: fix this
   return a >= b ? next.fn(this) : next.inverse(this);
 });
 handlebars.registerHelper('includes', function (a, b) {
   var next = arguments[arguments.length - 1];
+  // @ts-ignore TODO: fix this
   return a.includes(b) ? next.fn(this) : next.inverse(this);
 });
 
@@ -29,7 +33,7 @@ fs.readdirSync(partialsDir).forEach((filename) => {
 
     handlebars.registerPartial(
       name,
-      fs.readFileSync(path.join(partialsDir, filename), 'utf-8'),
+      fs.readFileSync(path.join(partialsDir, filename), 'utf-8')
     );
   }
 });

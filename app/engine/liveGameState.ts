@@ -1,13 +1,16 @@
 import { subMinutes } from 'date-fns';
 import { mkdir, writeFile } from 'fs/promises';
 import { reverse, take } from 'ramda';
-import { getLiveGameFeed } from '../api.js';
+import { getLiveGameFeed } from '../api';
+import { State } from '../state';
+import { LiveGame } from '../types';
 import {
   betweenInnings,
   getBaseRunners,
   getBatter,
   getBatterLine,
   getLoserScore,
+  getOffense,
   getPitcher,
   getPitcherLine,
   getWinnerScore,
@@ -16,35 +19,42 @@ import {
   lastPlayWithDescription,
   nextTeam,
   scoringPlays,
-} from '../utils.js';
+} from '../utils';
+import { Cache } from './types';
 
-export default async function liveGameState(gameId, cache, currentState) {
+export default async function liveGameState(
+  gameId: number,
+  cache: Cache,
+  currentState: State
+) {
   // if we've already noticed this game is over, return the final state...
   if (cache.gameEnded[gameId]) {
     if (
       cache.gameEnded[gameId] <
+      // @ts-ignore TODO: fix this
       subMinutes(new Date(), process.env.GAME_END_DELAY_MINUTES ?? 20)
     ) {
       console.log(
-        `Game has been over for ${process.env.GAME_END_DELAY_MINUTES} minutes, updating schedule cache to mark game as complete`,
+        `Game has been over for ${process.env.GAME_END_DELAY_MINUTES} minutes, updating schedule cache to mark game as complete`
       );
-      cache.schedule.games = cache.schedule.games.map((game) => {
-        if (game.gamePk === gameId) {
-          return {
-            ...game,
-            status: { abstractGameCode: 'F' },
-          };
-        }
+      if (cache.schedule?.games) {
+        cache.schedule.games = cache.schedule.games.map((game) => {
+          if (game.gamePk === gameId) {
+            return {
+              ...game,
+              status: { abstractGameCode: 'F', codedGameState: 'F' },
+            };
+          }
 
-        return game;
-      });
+          return game;
+        });
+      }
     }
 
     return currentState;
   }
 
   const game = await getLiveGameFeed(gameId);
-  const last3ScoringPlays = take(3, reverse(scoringPlays(game)));
 
   if (process.env.DEBUG_DUMP_GAME) {
     if (game.liveData.plays.currentPlay.result.event) {
@@ -52,23 +62,43 @@ export default async function liveGameState(gameId, cache, currentState) {
 
       await writeFile(
         `debug/${gameId}/${game.liveData.plays.currentPlay.about.endTime}.${game.liveData.plays.currentPlay.result.event}.json`,
-        JSON.stringify(game, null, 2),
+        JSON.stringify(game, null, 2)
       );
     }
   }
+
+  return processGameState(game, cache);
+}
+
+function getWinningTeamAndScore(game: LiveGame) {
+  return {
+    winningTeam: getWinningTeam(game),
+    winnerScore: getWinnerScore(game),
+    loserScore: getLoserScore(game),
+  };
+}
+
+export const processGameState = async (game: LiveGame, cache: Cache) => {
+  const last3ScoringPlays = take(3, reverse(scoringPlays(game)));
 
   // if this game is over...
   if (game.gameData.status.abstractGameCode === 'F') {
     console.log(`Noting game as ended`);
     // note the time we first noticed it as ended so we can leave up a final state...
-    if (!cache.gameEnded[gameId]) {
-      cache.gameEnded[gameId] = new Date();
+    if (!cache.gameEnded[game.gameData.id]) {
+      cache.gameEnded[game.gameData.id] = new Date();
     }
 
     // return gameEndedState(gameId, cache, currentState);
   }
 
   const isFinal = game.gameData.status.abstractGameCode === 'F';
+
+  console.log(
+    'isScoringPlay',
+    game.liveData.plays.currentPlay.about.isScoringPlay,
+    game.liveData.plays.currentPlay.result.description
+  );
 
   // otherwise the game is live...
   const data = {
@@ -82,7 +112,6 @@ export default async function liveGameState(gameId, cache, currentState) {
     upNext: betweenInnings(game) && nextTeam(game),
 
     isFinal,
-    ...(isFinal && getEndOfGameData(game)),
 
     upOrDown: isTeamWinning(game, cache.team.id) ? 'up' : 'down',
 
@@ -91,6 +120,9 @@ export default async function liveGameState(gameId, cache, currentState) {
     betweenInnings: betweenInnings(game),
 
     last3ScoringPlays,
+
+    isScoringPlay: game.liveData.plays.currentPlay.about.isScoringPlay,
+    scoringTeam: getOffense(game).team,
 
     hasRuns:
       game.liveData.linescore.teams.away.runs > 0 ||
@@ -119,18 +151,11 @@ export default async function liveGameState(gameId, cache, currentState) {
     },
 
     runners: getBaseRunners(game),
+    ...getWinningTeamAndScore(game),
   };
 
   return {
     mode: 'live-game',
     data,
   };
-}
-
-function getEndOfGameData(game) {
-  return {
-    winner: getWinningTeam(game),
-    winnerScore: getWinnerScore(game),
-    loserScore: getLoserScore(game),
-  };
-}
+};
