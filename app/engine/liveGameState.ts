@@ -1,6 +1,7 @@
 import { subMinutes } from 'date-fns';
 import { mkdir, writeFile } from 'fs/promises';
 import { reverse, take } from 'ramda';
+import { refetchTeamSchedule } from '.';
 import { getLiveGameFeed } from '../api';
 import { State } from '../state';
 import { LiveGame } from '../types';
@@ -20,6 +21,7 @@ import {
   nextTeam,
   scoringPlays,
 } from '../utils';
+import { debugDumpGame, gameEndDelay } from '../utils/env';
 import { Cache } from './types';
 
 export default async function liveGameState(
@@ -29,25 +31,11 @@ export default async function liveGameState(
 ) {
   // if we've already noticed this game is over, return the final state...
   if (cache.gameEnded[gameId]) {
-    if (
-      cache.gameEnded[gameId] <
-      // @ts-ignore TODO: fix this
-      subMinutes(new Date(), process.env.GAME_END_DELAY_MINUTES ?? 20)
-    ) {
-      console.log(
-        `Game has been over for ${process.env.GAME_END_DELAY_MINUTES} minutes, updating schedule cache to mark game as complete`
-      );
+    if (cache.gameEnded[gameId] < subMinutes(new Date(), gameEndDelay())) {
+      console.debug(`Game end delay over, refetching schedule...`);
       if (cache.schedule?.games) {
-        cache.schedule.games = cache.schedule.games.map((game) => {
-          if (game.gamePk === gameId) {
-            return {
-              ...game,
-              status: { abstractGameCode: 'F', codedGameState: 'F' },
-            };
-          }
-
-          return game;
-        });
+        // trigger a refetch of the schedule
+        await refetchTeamSchedule();
       }
     }
 
@@ -56,7 +44,7 @@ export default async function liveGameState(
 
   const game = await getLiveGameFeed(gameId);
 
-  if (process.env.DEBUG_DUMP_GAME) {
+  if (debugDumpGame()) {
     if (game.liveData.plays.currentPlay.result.event) {
       await mkdir(`debug/${gameId}`, { recursive: true });
 
@@ -83,22 +71,13 @@ export const processGameState = async (game: LiveGame, cache: Cache) => {
 
   // if this game is over...
   if (game.gameData.status.abstractGameCode === 'F') {
-    console.log(`Noting game as ended`);
-    // note the time we first noticed it as ended so we can leave up a final state...
+    console.debug(`Noting game as ended`);
     if (!cache.gameEnded[game.gameData.id]) {
       cache.gameEnded[game.gameData.id] = new Date();
     }
-
-    // return gameEndedState(gameId, cache, currentState);
   }
 
   const isFinal = game.gameData.status.abstractGameCode === 'F';
-
-  console.log(
-    'isScoringPlay',
-    game.liveData.plays.currentPlay.about.isScoringPlay,
-    game.liveData.plays.currentPlay.result.description
-  );
 
   // otherwise the game is live...
   const data = {

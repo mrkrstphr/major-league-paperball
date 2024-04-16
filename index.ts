@@ -6,21 +6,25 @@ import { equals } from 'ramda';
 import getNextState from './app/engine/index';
 import server from './app/server';
 import { getState, setState } from './app/state';
+import {
+  browserBin,
+  screenHeight,
+  screenWidth,
+  withoutPaper,
+} from './app/utils/env';
 
 const fileName = 'screenshot.png';
 const port = 3000;
 
 const takeScreenshot = async () => {
   const browser = await puppeteer.launch({
-    executablePath: process.env.BROWSER_BIN,
+    executablePath: browserBin(),
   });
   const page = await browser.newPage();
 
   await page.setViewport({
-    // @ts-ignore TODO: fix this
-    width: parseInt(process.env.PAPER_WIDTH ?? 800, 10),
-    // @ts-ignore TODO: fix this
-    height: parseInt(process.env.PAPER_HEIGHT ?? 480, 10),
+    width: screenWidth(),
+    height: screenHeight(),
   });
 
   await page.goto(`http://localhost:${port}`, {
@@ -58,7 +62,7 @@ async function runTick() {
 
     await takeScreenshot();
 
-    if (process.env.WITHOUT_PAPER) {
+    if (withoutPaper()) {
       console.info('Skipping publishScreenshot, WITHOUT_PAPER');
       return;
     }

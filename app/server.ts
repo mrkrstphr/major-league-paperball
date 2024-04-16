@@ -2,29 +2,41 @@ import express from 'express';
 import { engine } from 'express-handlebars';
 import fs from 'fs';
 import handlebars from 'handlebars';
-// @ts-ignore TODO: fix this
-import handlebarsRepeat from 'handlebars-helper-repeat';
 import path from 'path';
 import { clone } from 'ramda';
 import { getState } from './state';
 
 const partialsDir = 'app/views/partials';
 
-handlebars.registerHelper('repeat', handlebarsRepeat);
-handlebars.registerHelper('gt', function (a, b) {
+handlebars.registerHelper('gt', function (this: object, a, b) {
   var next = arguments[arguments.length - 1];
-  // @ts-ignore TODO: fix this
   return a > b ? next.fn(this) : next.inverse(this);
 });
-handlebars.registerHelper('gte', function (a, b) {
+handlebars.registerHelper('gte', function (this: object, a, b) {
   var next = arguments[arguments.length - 1];
-  // @ts-ignore TODO: fix this
   return a >= b ? next.fn(this) : next.inverse(this);
 });
-handlebars.registerHelper('includes', function (a, b) {
+handlebars.registerHelper('includes', function (this: object, a, b) {
   var next = arguments[arguments.length - 1];
-  // @ts-ignore TODO: fix this
   return a.includes(b) ? next.fn(this) : next.inverse(this);
+});
+handlebars.registerHelper('repeat', function repeatHelper(this: object) {
+  const { hash, fn } = arguments[0];
+  const { count, start = 0 } = hash;
+
+  let result = '';
+
+  for (let i = 0; i < count; i++) {
+    const index = i + start;
+    const data = { index };
+
+    result += fn(this, {
+      data,
+      blockParams: [index, data],
+    });
+  }
+
+  return result;
 });
 
 fs.readdirSync(partialsDir).forEach((filename) => {

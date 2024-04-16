@@ -2,6 +2,7 @@ import { sortBy, splitEvery } from 'ramda';
 import { getTeamById, getTeamSchedule, getTeams } from '../api';
 import { State } from '../state';
 import { today } from '../utils';
+import { teamId } from '../utils/env';
 import { isGameInProgress } from '../utils/schedule';
 import liveGameState from './liveGameState';
 import standingsState from './standingsState';
@@ -9,24 +10,23 @@ import type { Cache } from './types';
 
 const cache: Cache = { schedule: undefined, gameEnded: {} };
 
-const refetchTeamSchedule = async () => {
-  // @ts-ignore TODO: fix this
-  const games = await getTeamSchedule(process.env.TEAM_ID);
+export const refetchTeamSchedule = async () => {
+  const games = await getTeamSchedule(teamId());
 
   cache.schedule = { date: today(), games };
 };
 
 export default async function getNextState(currentState: State) {
+  const followedTeamId = teamId();
   // for now, we have to be restarted after editing .env...
   if (currentState.mode === 'missing-team') return currentState;
 
-  if (!process.env.TEAM_ID) {
+  if (!followedTeamId) {
     return missingTeamState();
   }
 
   if (!cache.team) {
-    // @ts-ignore TODO: fix this
-    cache.team = await getTeamById(process.env.TEAM_ID);
+    cache.team = await getTeamById(followedTeamId);
   }
 
   const hasTodaysSchedule = cache.schedule && cache.schedule.date === today();

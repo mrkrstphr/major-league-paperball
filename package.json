@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "dev": "nodemon -e js,hbs index.ts",
+    "dev": "nodemon -e ts,hbs index.ts",
     "start": "node dist/index.js"
   },
   "dependencies": {
@@ -15,7 +15,6 @@
     "ejs": "^3.1.9",
     "express": "^4.19.2",
     "express-handlebars": "^7.1.2",
-    "handlebars-helper-repeat": "^2.0.0",
     "puppeteer-core": "^22.6.3",
     "ramda": "^0.29.1"
   },
