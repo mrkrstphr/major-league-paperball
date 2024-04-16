@@ -1,6 +1,6 @@
-import { format } from 'date-fns';
 import { isNil, isNotNil } from 'ramda';
 import { LiveGame, Schedule_Game, Standings_Team, Team } from './types';
+import { formatDateTime } from './utils/date';
 
 export const today = () => justDate();
 
@@ -132,6 +132,16 @@ export const getLoserScore = (game: LiveGame) =>
     ? game.liveData.linescore.teams.away.runs
     : game.liveData.linescore.teams.home.runs;
 
+export const followedTeamScore = (game: Schedule_Game, followedTeam: Team) =>
+  game.teams.away.team.id === followedTeam.id
+    ? game.teams.away.score
+    : game.teams.home.score;
+
+export const opponentTeamScore = (game: Schedule_Game, followedTeam: Team) =>
+  game.teams.away.team.id === followedTeam.id
+    ? game.teams.home.score
+    : game.teams.away.score;
+
 export const gameResult = (game: Schedule_Game, followedTeam: Team) => {
   if (wasGamePostponed(game)) {
     return (
@@ -140,24 +150,13 @@ export const gameResult = (game: Schedule_Game, followedTeam: Team) => {
     );
   }
 
+  const ourScore = followedTeamScore(game, followedTeam);
+  const theirScore = opponentTeamScore(game, followedTeam);
+
   return (
     (didTeamWin(game, followedTeam.id) ? 'Won' : 'Lost') +
-    ` ${game.teams.away.score}-${game.teams.home.score}`
+    ` ${ourScore}-${theirScore}`
   );
-};
-
-export const formatDateTime = (date: string | Date) => {
-  const doubleDate = new Date(date);
-
-  switch (process.env.DATE_FORMAT) {
-    case 'american':
-      return format(doubleDate, 'L/d h:mm a');
-
-    case 'world':
-      return format(doubleDate, 'd/L H:mm');
-  }
-
-  return doubleDate.toLocaleString();
 };
 
 export const gameVsOrAatDescription = (

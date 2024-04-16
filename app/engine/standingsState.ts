@@ -2,12 +2,8 @@ import { subMinutes } from 'date-fns';
 import { isNotNil, reverse } from 'ramda';
 import { getStandingsForLeague } from '../api';
 import { State } from '../state';
-import {
-  formatDateTime,
-  gameResult,
-  gameVsOrAatDescription,
-  getLastTen,
-} from '../utils';
+import { gameResult, gameVsOrAatDescription, getLastTen } from '../utils';
+import { formatDateTime } from '../utils/date';
 import { Cache } from './types';
 
 export default async function standingsState(
@@ -61,7 +57,7 @@ export default async function standingsState(
   };
 
   return {
-    mode: 'next-game',
+    mode: 'standings',
     data: {
       standings: standingsData,
       nextGame,

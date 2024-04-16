@@ -3,8 +3,9 @@ import { getTeamById, getTeamSchedule, getTeams } from '../api';
 import { State } from '../state';
 import { today } from '../utils';
 import { teamId } from '../utils/env';
-import { isGameInProgress } from '../utils/schedule';
+import { isGameInProgress, isGameStartingSoon } from '../utils/schedule';
 import liveGameState from './liveGameState';
+import previewState from './previewState';
 import standingsState from './standingsState';
 import type { Cache } from './types';
 
@@ -39,6 +40,12 @@ export default async function getNextState(currentState: State) {
 
   if (liveGame) {
     return liveGameState(liveGame.gamePk, cache, currentState);
+  }
+
+  const startingSoon = cache.schedule && isGameStartingSoon(cache.schedule);
+
+  if (startingSoon) {
+    return previewState(startingSoon.gamePk, currentState, cache);
   }
 
   return standingsState(currentState, cache);

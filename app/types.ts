@@ -18,9 +18,9 @@ export type Schedule_Game = {
   gameDate: string;
   rescheduleDate?: string;
   status: {
-    // TODO: enum here
+    // TODO: enum here L,
     abstractGameCode: string;
-    // TODO: enum here
+    // TODO: enum here I,
     codedGameState: string;
   };
   teams: {
@@ -44,6 +44,13 @@ export type LiveGame_Data_Team = {
 
 export type LiveGame_GameData = {
   id: number;
+  datetime: {
+    dateTime: string;
+  };
+  probablePitchers: {
+    away: LiveGame_Player;
+    home: LiveGame_Player;
+  };
   status: {
     // TODO: enum here
     abstractGameCode: string;
@@ -51,6 +58,14 @@ export type LiveGame_GameData = {
   teams: {
     away: LiveGame_Data_Team;
     home: LiveGame_Data_Team;
+  };
+  venue: {
+    name: string;
+  };
+  weather: {
+    condition: string;
+    temp: string;
+    wind: string;
   };
 };
 
@@ -90,12 +105,20 @@ export type LiveGame_LiveData_LineScore = {
 };
 
 export type LiveGame_LiveData_BoxScore_Team_Player = {
+  person: LiveGame_Player;
   stats: {
     batting: {
       summary: string;
     };
     pitching: {
       summary: string;
+    };
+  };
+  seasonStats: {
+    pitching: {
+      era: string;
+      wins: number;
+      losses: number;
     };
   };
 };
