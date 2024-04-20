@@ -1,24 +1,24 @@
 <div class="h-16 w-20">
-  <div class="inline-flex flex-col space-y-1 rotate-45 mt-3 ml-3">
-    <div class="flex space-x-1">
-        {{#includes runners 2}}
-        {{> base_filled}}
-        {{else}}
-        {{> base_open}}
-        {{/includes}}
-
-        {{#includes runners 1}}
-        {{> base_filled}}
-        {{else}}
-        {{> base_open}}
-        {{/includes}}
+  <div class="ml-3 mt-3 inline-flex flex-col -space-y-1">
+    <div class="flex justify-center items-center">
+      {{#includes runners 2}}
+      {{> base_filled}}
+      {{else}}
+      {{> base_open}}
+      {{/includes}}
     </div>
-    <div>
-        {{#includes runners 3}}
-        {{> base_filled}}
-        {{else}}
-        {{> base_open}}
-        {{/includes}}
+    <div class="flex space-x-4">
+      {{#includes runners 3}}
+      {{> base_filled}}
+      {{else}}
+      {{> base_open}}
+      {{/includes}}
+
+      {{#includes runners 1}}
+      {{> base_filled}}
+      {{else}}
+      {{> base_open}}
+      {{/includes}}
     </div>
   </div>
 </div>
