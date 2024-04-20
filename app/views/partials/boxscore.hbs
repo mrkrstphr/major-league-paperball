@@ -1,0 +1,69 @@
+<div class="divide-y text-lg">
+  <div class="flex font-medium divide-x">
+    <div class="text-center w-24"></div>
+    {{#each boxscore.innings as |inning|}}
+    <div class="flex-1 text-center">
+      {{inning.num}}
+    </div>
+    {{/each}}
+    <div class="flex-1 text-center">
+      R
+    </div>
+    <div class="flex-1 text-center">
+      H
+    </div>
+    <div class="flex-1 text-center">
+      E
+    </div>
+  </div>
+
+  <div class="flex divide-x">
+    <div class="w-24 divide-y font-semibold">
+      <div>{{teams.away.abbreviation}}</div>
+      <div>{{teams.home.abbreviation}}</div>
+    </div>
+    {{#each boxscore.innings as |inning|}}
+    <div class="flex-1 divide-y">
+        <div class="text-center">
+          {{#notNil inning.away.runs}}
+            {{inning.away.runs}}
+          {{else}}
+            -
+          {{/notNil}}
+        </div>
+        <div class="text-center">
+          {{#notNil inning.home.runs}}
+            {{inning.home.runs}}
+          {{else}}
+            -
+          {{/notNil}}
+        </div>
+    </div>
+    {{/each}}
+
+    <div class="flex-1 divide-y font-semibold">
+      <div class="text-center">
+        {{boxscore.totals.away.runs}}
+      </div>
+      <div class="text-center">
+        {{boxscore.totals.home.runs}}
+      </div>
+    </div>
+    <div class="flex-1 divide-y font-semibold">
+      <div class="text-center">
+        {{boxscore.totals.away.hits}}
+      </div>
+      <div class="text-center">
+        {{boxscore.totals.home.hits}}
+      </div>
+    </div>
+    <div class="flex-1 divide-y font-semibold">
+      <div class="text-center">
+        {{boxscore.totals.away.errors}}
+      </div>
+      <div class="text-center">
+        {{boxscore.totals.home.errors}}
+      </div>
+    </div>
+  </div>
+</div>
