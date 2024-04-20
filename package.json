@@ -7,20 +7,21 @@
     "dev": "nodemon -e ts,hbs index.ts",
     "start": "node dist/index.js",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test": "jest"
   },
   "dependencies": {
     "axios": "^1.6.8",
     "cron": "^3.1.6",
     "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
-    "ejs": "^3.1.9",
     "express": "^4.19.2",
     "express-handlebars": "^7.1.2",
     "puppeteer-core": "^22.6.3",
     "ramda": "^0.29.1"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@storybook/addon-essentials": "^8.0.8",
     "@storybook/addon-interactions": "^8.0.8",
     "@storybook/addon-links": "^8.0.8",
@@ -34,8 +35,10 @@
     "@types/node": "^20.12.7",
     "@types/ramda": "^0.29.12",
     "handlebars-loader": "^1.7.3",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.0",
     "storybook": "^8.0.8",
+    "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
     "tsc": "^2.0.4",
     "typescript": "^5.4.5"
