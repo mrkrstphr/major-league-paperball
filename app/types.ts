@@ -87,6 +87,23 @@ export type LiveGame_LiveData_LineScore = {
   // TODO: enum here
   inningState: string;
   isTopInning: boolean;
+  scheduledInnings: number;
+  innings: Array<{
+    num: number;
+    ordinalNum: string;
+    home: {
+      runs: number;
+      hits: number;
+      errors: number;
+      leftOnBase: number;
+    };
+    away: {
+      runs: number;
+      hits: number;
+      errors: number;
+      leftOnBase: number;
+    };
+  }>;
   defense: {
     team: LiveGame_Data_Team;
     pitcher: LiveGame_Player;
