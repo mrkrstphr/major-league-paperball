@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { addDays, subDays } from 'date-fns';
+import { getMockedData } from './mockedData';
 import { LiveGame, Schedule, Standings, Team } from './types';
 
 const baseUrl = 'https://statsapi.mlb.com/api';
@@ -31,8 +32,14 @@ export async function getTeamSchedule(teamId: number) {
     day: '2-digit',
   }).format(addDays(new Date(), 6));
 
-  const { data } = await axios.get<Schedule>(
-    `${baseUrl}/v1/schedule?sportId=1&teamId=${teamId}&startDate=${startDate}&endDate=${endDate}`
+  const data = await getMockedData<Schedule>(
+    'schedule',
+    async () =>
+      (
+        await axios.get<Schedule>(
+          `${baseUrl}/v1/schedule?sportId=1&teamId=${teamId}&startDate=${startDate}&endDate=${endDate}`
+        )
+      ).data
   );
 
   return data.dates
@@ -42,11 +49,13 @@ export async function getTeamSchedule(teamId: number) {
 }
 
 export async function getLiveGameFeed(gameId: number) {
-  const { data } = await axios.get<LiveGame>(
-    `${baseUrl}/v1.1/game/${gameId}/feed/live`
+  return await getMockedData<LiveGame>(
+    'live-game',
+    async () =>
+      (
+        await axios.get<LiveGame>(`${baseUrl}/v1.1/game/${gameId}/feed/live`)
+      ).data
   );
-
-  return data;
 }
 
 export async function getStandingsForLeague(leagueId: number) {

@@ -21,18 +21,18 @@ import {
   nextTeam,
   scoringPlays,
 } from '../utils';
-import { debugDumpGame, gameEndDelay } from '../utils/env';
+import { consoleDebug, debugDumpGame, gameEndDelay } from '../utils/env';
 import { Cache } from './types';
 
 export default async function liveGameState(
   gameId: number,
   cache: Cache,
-  currentState: State
+  currentState: State,
 ) {
   // if we've already noticed this game is over, return the final state...
   if (cache.gameEnded[gameId]) {
     if (cache.gameEnded[gameId] < subMinutes(new Date(), gameEndDelay())) {
-      console.debug(`Game end delay over, refetching schedule...`);
+      consoleDebug(`Game end delay over, refetching schedule...`);
       if (cache.schedule?.games) {
         // trigger a refetch of the schedule
         await refetchTeamSchedule();
@@ -50,7 +50,7 @@ export default async function liveGameState(
 
       await writeFile(
         `debug/${gameId}/${game.liveData.plays.currentPlay.about.endTime}.${game.liveData.plays.currentPlay.result.event}.json`,
-        JSON.stringify(game, null, 2)
+        JSON.stringify(game, null, 2),
       );
     }
   }
@@ -71,7 +71,7 @@ export const processGameState = async (game: LiveGame, cache: Cache) => {
 
   // if this game is over...
   if (game.gameData.status.abstractGameCode === 'F') {
-    console.debug(`Noting game as ended`);
+    consoleDebug(`Noting game as ended`);
     if (!cache.gameEnded[game.gameData.id]) {
       cache.gameEnded[game.gameData.id] = new Date();
     }

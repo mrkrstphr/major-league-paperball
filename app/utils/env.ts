@@ -23,5 +23,15 @@ export const screenHeight = () =>
 
 export const browserBin = () => process.env.BROWSER_BIN;
 
+export const debug = () => isEnvTruthy(process.env.DEBUG);
+
 export const withoutPaper = () => isEnvTruthy(process.env.WITHOUT_PAPER);
 export const debugDumpGame = () => isEnvTruthy(process.env.DEBUG_DUMP_GAME);
+
+export const mockDataFile = () => process.env.MOCKS as string | undefined;
+
+export const consoleDebug = (...args: any[]) => {
+  if (debug()) {
+    console.debug(...args);
+  }
+};

@@ -8,6 +8,7 @@ import server from './app/server';
 import { getState, setState } from './app/state';
 import {
   browserBin,
+  consoleDebug,
   screenHeight,
   screenWidth,
   withoutPaper,
@@ -56,14 +57,14 @@ async function runTick() {
     nextState.mode !== currentState.mode;
 
   if (hasStateChanged) {
-    console.info('State changed:', nextState.mode);
+    consoleDebug('State changed:', nextState.mode);
 
     setState(nextState);
 
     await takeScreenshot();
 
     if (withoutPaper()) {
-      console.info('Skipping publishScreenshot, WITHOUT_PAPER');
+      consoleDebug('Skipping publishScreenshot, WITHOUT_PAPER');
       return;
     }
 
@@ -81,5 +82,5 @@ CronJob.from({
 });
 
 server.listen(port, () => {
-  console.log(`🤖 listening on port ${port}`);
+  console.log(`⚾ listening on port ${port}`);
 });
