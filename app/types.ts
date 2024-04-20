@@ -119,6 +119,9 @@ export type LiveGame_LiveData_LineScore = {
     away: LiveGame_LiveData_LineScore_Team;
     home: LiveGame_LiveData_LineScore_Team;
   };
+  balls: number;
+  strikes: number;
+  outs: number;
 };
 
 export type LiveGame_LiveData_BoxScore_Team_Player = {

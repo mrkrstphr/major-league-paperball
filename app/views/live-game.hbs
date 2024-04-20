@@ -17,30 +17,11 @@
       </div>
     </div>
 
-    {{> matchup betweenInnings=betweenInnings matchup=matchup}}
+    {{> matchup matchup=matchup}}
   </div>
 
   {{> last_x_plays plays=last3ScoringPlays}}
 </div>
-
-{{#if betweenInnings}}
-  <div class="absolute bg-black text-white w-full -ml-4 py-4 text-center" style="top: 50%; transform: translateY(-50%);">
-    <div class="text-2xl">{{upNext}} are up next!</div>
-    <div class="text-lg">
-      {{inningDescription}}
-      {{#if hasRuns}} :: {{teamName}} are {{upOrDown}} {{lineScore.away.runs}}-{{lineScore.home.runs}} {{/if}}
-    </div>
-  </div>
-{{/if}}
-
-{{#if isFinal}}
-  <div class="absolute bg-black text-white w-full -ml-4 py-4 text-center" style="top: 50%; transform: translateY(-50%);">
-    <div class="text-2xl">{{winningTeam.locationName}} wins {{winnerScore}}-{{loserScore}}!</div>
-    <div class="text-lg">
-      Final{{#gt inningNumber 9}}/{{inningNumber}}{{/gt}}
-    </div>
-  </div>
-{{/if}}
 
 {{#if isScoringPlay}}
   <div class="absolute bg-black text-white w-full -ml-4 py-4 text-center" style="top: 50%; transform: translateY(-50%);">

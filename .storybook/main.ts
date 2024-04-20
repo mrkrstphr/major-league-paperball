@@ -27,6 +27,7 @@ const config: StorybookConfig = {
       loader: 'handlebars-loader',
       options: {
         helperDirs: [__dirname + '/../app/views/helpers'],
+        partialDirs: [__dirname + '/../app/views/partials'],
       },
     });
 

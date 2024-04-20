@@ -1,12 +1,10 @@
 import { subMinutes } from 'date-fns';
 import { mkdir, writeFile } from 'fs/promises';
 import { reverse, take } from 'ramda';
-import { refetchTeamSchedule } from '.';
-import { getLiveGameFeed } from '../api';
-import { State } from '../state';
-import { LiveGame } from '../types';
+import { getLiveGameFeed } from '../../api';
+import { State } from '../../state';
+import { LiveGame } from '../../types';
 import {
-  betweenInnings,
   getBaseRunners,
   getBatter,
   getBatterLine,
@@ -18,11 +16,14 @@ import {
   getWinningTeam,
   isTeamWinning,
   lastPlayWithDescription,
-  nextTeam,
   scoringPlays,
-} from '../utils';
-import { consoleDebug, debugDumpGame, gameEndDelay } from '../utils/env';
-import { Cache } from './types';
+} from '../../utils';
+import { consoleDebug, debugDumpGame, gameEndDelay } from '../../utils/env';
+import { betweenInnings, isGameOver } from '../../utils/liveGame';
+import { refetchTeamSchedule } from '../index';
+import { Cache } from '../types';
+import endOfGame from './endOfGame';
+import endOfInning from './endOfInning';
 
 export default async function liveGameState(
   gameId: number,
@@ -67,8 +68,6 @@ function getWinningTeamAndScore(game: LiveGame) {
 }
 
 export const processGameState = async (game: LiveGame, cache: Cache) => {
-  const last3ScoringPlays = take(3, reverse(scoringPlays(game)));
-
   // if this game is over...
   if (game.gameData.status.abstractGameCode === 'F') {
     consoleDebug(`Noting game as ended`);
@@ -76,6 +75,16 @@ export const processGameState = async (game: LiveGame, cache: Cache) => {
       cache.gameEnded[game.gameData.id] = new Date();
     }
   }
+
+  if (isGameOver(game)) {
+    return endOfGame(game);
+  }
+
+  if (betweenInnings(game)) {
+    return endOfInning(game);
+  }
+
+  const last3ScoringPlays = take(3, reverse(scoringPlays(game)));
 
   const isFinal = game.gameData.status.abstractGameCode === 'F';
 
@@ -88,15 +97,12 @@ export const processGameState = async (game: LiveGame, cache: Cache) => {
     inningNumber: game.liveData.linescore.currentInning,
     inningDescription: `${game.liveData.linescore.inningState} ${game.liveData.linescore.currentInningOrdinal}`,
     lastPlayDescription: lastPlayWithDescription(game)?.result?.description,
-    upNext: betweenInnings(game) && nextTeam(game),
 
     isFinal,
 
     upOrDown: isTeamWinning(game, cache.team.id) ? 'up' : 'down',
 
     count: game.liveData?.plays?.currentPlay?.count,
-
-    betweenInnings: betweenInnings(game),
 
     last3ScoringPlays,
 

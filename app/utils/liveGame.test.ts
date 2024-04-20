@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { LiveGame, LiveGame_LiveData_LineScore } from '../types';
-import { boxscore } from './liveGame';
+import { boxscore, isGameOver } from './liveGame';
 
 describe('boxscore', () => {
   it('should limit the returned innings to a max of 9 for extra innings games', () => {
@@ -71,5 +71,163 @@ describe('boxscore', () => {
     expect(data.innings.map(({ num }) => num)).toEqual([
       1, 2, 3, 4, 5, 6, 7, 8, 9,
     ]);
+  });
+});
+
+describe('isGameOver', () => {
+  it('should return true if the game is final', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'F',
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(true);
+  });
+
+  it('should return true if the game has 3 outs in the top of the 9th, and the home team is winning', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'L',
+        },
+      },
+      liveData: {
+        linescore: {
+          currentInning: 9,
+          scheduledInnings: 9,
+          outs: 3,
+          isTopInning: true,
+          teams: {
+            home: { runs: 5 },
+            away: { runs: 3 },
+          },
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(true);
+  });
+
+  it('should return false if the game has 3 outs in the top of the 9th, and the game is tied', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'L',
+        },
+      },
+      liveData: {
+        linescore: {
+          currentInning: 9,
+          scheduledInnings: 9,
+          outs: 3,
+          isTopInning: true,
+          teams: {
+            home: { runs: 5 },
+            away: { runs: 5 },
+          },
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(false);
+  });
+
+  it('should return false if the game has 3 outs in the top of the 9th, and the away team is winning', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'L',
+        },
+      },
+      liveData: {
+        linescore: {
+          currentInning: 9,
+          scheduledInnings: 9,
+          outs: 3,
+          isTopInning: true,
+          teams: {
+            home: { runs: 3 },
+            away: { runs: 5 },
+          },
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(false);
+  });
+
+  it('should return true if the game is in the bottom of the 9th, and the home team is winning', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'L',
+        },
+      },
+      liveData: {
+        linescore: {
+          currentInning: 9,
+          scheduledInnings: 9,
+          outs: 0,
+          isTopInning: false,
+          teams: {
+            home: { runs: 5 },
+            away: { runs: 3 },
+          },
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(true);
+  });
+
+  it('should return true if the game is over after extra innings', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'S',
+        },
+      },
+      liveData: {
+        linescore: {
+          currentInning: 10,
+          scheduledInnings: 9,
+          outs: 3,
+          isTopInning: true,
+          teams: {
+            home: { runs: 5 },
+            away: { runs: 3 },
+          },
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(true);
+  });
+
+  it('should return false for any inning < scheduledInnings', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'S',
+        },
+      },
+      liveData: {
+        linescore: {
+          currentInning: 8,
+          scheduledInnings: 9,
+          outs: 2,
+          isTopInning: false,
+          teams: {
+            home: { runs: 5 },
+            away: { runs: 3 },
+          },
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(false);
   });
 });

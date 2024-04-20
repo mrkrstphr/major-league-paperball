@@ -11,36 +11,16 @@ export const justDate = (date = new Date()) =>
     day: '2-digit',
   }).format(date);
 
-export const awayTeam = (game: LiveGame) => game.gameData.teams.away;
-export const homeTeam = (game: LiveGame) => game.gameData.teams.home;
-
 export const isAwayTeamBatting = (game: LiveGame) =>
   game.liveData.linescore.isTopInning;
 
 export const topOfInning = (game: LiveGame) =>
   game.liveData.linescore.isTopInning;
 
-export const endOfInning = (game: LiveGame) =>
-  game.liveData?.linescore?.inningState === 'End';
-
-export const middleOfInning = (game: LiveGame) =>
-  game.liveData?.linescore?.inningState === 'Middle';
-
-export const betweenInnings = (game: LiveGame) =>
-  endOfInning(game) || middleOfInning(game);
-
 export const lastPlayWithDescription = (game: LiveGame) =>
   game.liveData.plays.allPlays.findLast(
-    (play) => !isNil(play.result?.description)
+    (play) => !isNil(play.result?.description),
   );
-
-export const nextTeam = (game: LiveGame) => {
-  if (endOfInning(game)) {
-    return awayTeam(game).name;
-  }
-
-  return homeTeam(game).name;
-};
 
 export const getOffense = (game: LiveGame) => game.liveData.linescore.offense;
 export const getDefense = (game: LiveGame) => game.liveData.linescore.defense;
@@ -77,7 +57,7 @@ export const getBatterLine = (game: LiveGame) => {
 
 export const getLastTen = (team: Standings_Team) => {
   const lastTen = team.records.splitRecords.find(
-    (record) => record.type === 'lastTen'
+    (record) => record.type === 'lastTen',
   );
 
   return lastTen ? `${lastTen.wins}-${lastTen.losses}` : '';
@@ -161,7 +141,7 @@ export const gameResult = (game: Schedule_Game, followedTeam: Team) => {
 
 export const gameVsOrAatDescription = (
   scheduledGame: Schedule_Game,
-  followedTeam: Team
+  followedTeam: Team,
 ) =>
   scheduledGame?.teams.home.team.id === followedTeam.id
     ? `${scheduledGame.teams.home.team.name} vs ${scheduledGame.teams.away.team.name}`
