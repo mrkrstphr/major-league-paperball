@@ -18,6 +18,11 @@ const fileName = 'screenshot.png';
 const port = 3000;
 
 const takeScreenshot = async () => {
+  if (!browserBin()) {
+    console.error('No browser found, skipping screenshot');
+    return;
+  }
+
   const browser = await puppeteer.launch({
     executablePath: browserBin(),
   });
