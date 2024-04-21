@@ -18,7 +18,7 @@ export default function configureHandlebars() {
   });
 
   fs.readdirSync(helpersDir).forEach(async (filename) => {
-    if (filename.endsWith('.ts')) {
+    if (filename.endsWith('.ts') || filename.endsWith('.js')) {
       const name = path.parse(filename).name;
       const func = await import(`./views/helpers/${filename}`);
 

@@ -4,7 +4,7 @@
   "version": "0.0.5",
   "license": "MIT",
   "scripts": {
-    "build": "tsc",
+    "build": "./bin/build.sh",
     "dev": "nodemon -e ts,hbs index.ts",
     "start": "node dist/index.js",
     "storybook": "storybook dev -p 6006",
