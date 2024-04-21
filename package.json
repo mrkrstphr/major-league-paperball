@@ -1,6 +1,7 @@
 {
   "name": "major-league-paperball",
   "description": "Keep tabs on your favorite MLB team on an e-ink screen ",
+  "version": "0.0.5",
   "license": "MIT",
   "scripts": {
     "build": "tsc",
