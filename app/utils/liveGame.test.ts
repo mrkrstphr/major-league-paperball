@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 import { LiveGame, LiveGame_LiveData_LineScore } from '../types';
 import { boxscore, isGameOver } from './liveGame';
 
