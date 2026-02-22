@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { execSync, spawn } from 'child_process';
+import { spawn } from 'child_process';
 import http from 'http';
 import { existsSync, readFileSync, readdirSync, statSync, unlinkSync, watch } from 'fs';
 import { writeFile } from 'fs/promises';
@@ -590,7 +590,7 @@ function respond(res: http.ServerResponse, body: object) {
 
   server.listen(PORT, async () => {
     await render(current);
-    execSync(`open http://localhost:${PORT}`);
+    console.log(`\nReady → http://localhost:${PORT}\n`);
 
     // Watch this file for changes; spawn a fresh process and exit when it changes
     let restarting = false;
