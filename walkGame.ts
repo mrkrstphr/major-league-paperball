@@ -1,11 +1,13 @@
 import 'dotenv/config';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import http from 'http';
-import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync, watch } from 'fs';
 import { writeFile } from 'fs/promises';
 import path from 'path';
 import { processGameState } from './app/engine/liveGameState';
 import { renderToImage } from './app/render';
+
+// ── CLI args ──────────────────────────────────────────────────────────────────
 
 const dir = process.argv[2];
 
@@ -22,6 +24,8 @@ if (!existsSync(dir)) {
 const speedIdx = process.argv.indexOf('--auto-speed');
 const initialAutoSpeed = speedIdx !== -1 ? Number(process.argv[speedIdx + 1]) : 5;
 
+// ── File list ─────────────────────────────────────────────────────────────────
+
 let files = readdirSync(dir)
   .filter((f) => f.endsWith('.json') && f !== 'index.json')
   .sort()
@@ -33,29 +37,32 @@ if (files.length === 0) {
   process.exit(1);
 }
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
 const OUTPUT = 'walkgame.png';
 const PORT = 9998;
 const INDEX_FILE = path.join(dir, 'index.json');
 
+// ── State ─────────────────────────────────────────────────────────────────────
+
 type IndexEntry = { filename: string; tag: string; label: string };
-let fileIndex: IndexEntry[] = [];
 let fileIndexMap = new Map<string, IndexEntry>();
 
-const cache = {
-  schedule: undefined,
-  gameEnded: {},
-  team: { teamName: 'Unknown', id: 0 },
-};
+const cache = { schedule: undefined, gameEnded: {}, team: { teamName: 'Unknown', id: 0 } };
 
 let current = 0;
 let rendering = false;
 let lastMode = '';
 let lastGameState: any = null;
 let lastGameData: any = null;
-let renderCount = 0;
+
+// ── Render ────────────────────────────────────────────────────────────────────
 
 async function render(i: number) {
-  if (rendering) return;
+  if (rendering) {
+    console.warn('render() called while already rendering — skipping');
+    return;
+  }
   rendering = true;
 
   const file = files[i];
@@ -63,14 +70,13 @@ async function render(i: number) {
   console.log(`[${i + 1}/${files.length}]  ${name}  →  rendering…`);
 
   try {
-    const data = JSON.parse(readFileSync(file, 'utf8'));
-    const state = await processGameState(data, cache);
+    const raw = JSON.parse(readFileSync(file, 'utf8'));
+    const state = await processGameState(raw, cache);
     const png = await renderToImage(state);
     await writeFile(OUTPUT, png);
     lastMode = state.mode;
     lastGameState = state;
-    lastGameData = data;
-    renderCount++;
+    lastGameData = raw;
     console.log(`[${i + 1}/${files.length}]  ${name}  →  ${state.mode}`);
   } catch (e: any) {
     console.log(`[${i + 1}/${files.length}]  ${name}  →  ERROR: ${e.message}`);
@@ -79,17 +85,19 @@ async function render(i: number) {
   rendering = false;
 }
 
+// ── Server state response ─────────────────────────────────────────────────────
+
 function getStateJson() {
   return {
     current: current + 1,
     total: files.length,
     filename: path.basename(files[current] ?? ''),
     mode: lastMode,
-    rendering,
-    renderCount,
     initialAutoSpeed,
   };
 }
+
+// ── File analysis (used only during index build) ──────────────────────────────
 
 function analyzeFile(data: any): { tag: string; label: string } {
   try {
@@ -123,29 +131,30 @@ function analyzeFile(data: any): { tag: string; label: string } {
   }
 }
 
-function applyIndex() {
-  fileIndexMap = new Map(fileIndex.map((e) => [e.filename, e]));
-}
+// ── Index ─────────────────────────────────────────────────────────────────────
 
 async function buildIndex() {
-  if (existsSync(INDEX_FILE)) {
-    try {
-      fileIndex = JSON.parse(readFileSync(INDEX_FILE, 'utf8'));
-      applyIndex();
-      return;
-    } catch {
-      // fall through and rebuild
-    }
-  }
-
+  // Bail early if index.json is somehow a directory (e.g. from a prior crash)
   if (existsSync(INDEX_FILE) && statSync(INDEX_FILE).isDirectory()) {
     console.log(`Warning: ${INDEX_FILE} is a directory — skipping index creation.`);
     return;
   }
 
+  // Load existing index from disk
+  if (existsSync(INDEX_FILE)) {
+    try {
+      const entries: IndexEntry[] = JSON.parse(readFileSync(INDEX_FILE, 'utf8'));
+      fileIndexMap = new Map(entries.map((e) => [e.filename, e]));
+      return;
+    } catch {
+      console.log('index.json is corrupted — rebuilding…');
+    }
+  }
+
+  // Build from scratch
   console.log(`Creating index.json… (${files.length} files)`);
   const BAR = 40;
-  fileIndex = files.map((f, i) => {
+  const entries: IndexEntry[] = files.map((f, i) => {
     const filled = Math.round(((i + 1) / files.length) * BAR);
     process.stdout.write(`\r  [${'█'.repeat(filled)}${'░'.repeat(BAR - filled)}] ${i + 1}/${files.length}`);
     try {
@@ -157,9 +166,12 @@ async function buildIndex() {
     }
   });
   process.stdout.write('\n');
-  await writeFile(INDEX_FILE, JSON.stringify(fileIndex, null, 2));
-  applyIndex();
+
+  await writeFile(INDEX_FILE, JSON.stringify(entries, null, 2));
+  fileIndexMap = new Map(entries.map((e) => [e.filename, e]));
 }
+
+// ── Browser UI ────────────────────────────────────────────────────────────────
 
 const HTML = `<!DOCTYPE html>
 <html>
@@ -259,24 +271,20 @@ var autoOn = false;
 var autoTimer = null;
 var autoSpeed = 5;
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
+// ── UI state ──────────────────────────────────────────────────────────────────
 
 function setRendering(r) {
   document.getElementById('btn-prev').disabled = r;
   document.getElementById('btn-next').disabled = r;
   document.getElementById('btn-delete').disabled = r;
-  var status = document.getElementById('status');
-  if (r) { status.className = 'rendering'; }
+  document.getElementById('status').className = r ? 'rendering' : '';
 }
 
 function onStateUpdate(s, refreshFileList) {
   currentFileIdx = s.current;
-  var status = document.getElementById('status');
-  status.textContent = '[' + s.current + '/' + s.total + ']  ' + s.filename + '  \u2192  ' + s.mode;
-  status.className = '';
-  document.getElementById('btn-prev').disabled = false;
-  document.getElementById('btn-next').disabled = false;
-  document.getElementById('btn-delete').disabled = false;
+  document.getElementById('status').textContent =
+    '[' + s.current + '/' + s.total + ']  ' + s.filename + '  \u2192  ' + s.mode;
+  setRendering(false);
   document.getElementById('img').src = '/img?t=' + Date.now();
   document.getElementById('jump-max').textContent = '/ ' + s.total;
   document.getElementById('jump-input').max = s.total;
@@ -287,23 +295,25 @@ function onStateUpdate(s, refreshFileList) {
   }
 }
 
-function updateAutoButton() {
-  var btn = document.getElementById('btn-auto');
-  btn.textContent = autoOn ? '\u23f9 Stop' : '\u25b6 Auto';
-  btn.className = autoOn ? 'active' : '';
+// ── Auto mode ─────────────────────────────────────────────────────────────────
+
+function stopAuto() {
+  autoOn = false;
+  if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+  document.getElementById('btn-auto').textContent = '\u25b6 Auto';
+  document.getElementById('btn-auto').className = '';
 }
 
-function updateFileListCurrent() {
-  var el = document.getElementById('tab-content');
-  el.querySelectorAll('.file-row').forEach(function(row) {
-    var idx = parseInt(row.getAttribute('data-index'));
-    row.className = 'file-row' + (idx === currentFileIdx ? ' current' : '');
-  });
-  var active = el.querySelector('.current');
-  if (active) active.scrollIntoView({ block: 'nearest' });
+function startAuto() {
+  autoOn = true;
+  document.getElementById('btn-auto').textContent = '\u23f9 Stop';
+  document.getElementById('btn-auto').className = 'active';
+  scheduleAuto();
 }
 
-// ── Auto mode (client-side setTimeout chain) ──────────────────────────────────
+function toggleAuto() {
+  if (autoOn) { stopAuto(); } else { startAuto(); }
+}
 
 function scheduleAuto() {
   autoTimer = setTimeout(async function() {
@@ -311,37 +321,21 @@ function scheduleAuto() {
     setRendering(true);
     try {
       var s = await (await fetch('/next', { method: 'POST' })).json();
+      if (s.current >= s.total) { stopAuto(); }
       onStateUpdate(s, false);
-      if (s.current >= s.total) {
-        autoOn = false;
-        updateAutoButton();
-        return;
-      }
     } catch(e) {
+      stopAuto();
       setRendering(false);
     }
     if (autoOn) scheduleAuto();
   }, autoSpeed * 1000);
 }
 
-function toggleAuto() {
-  if (autoOn) {
-    autoOn = false;
-    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
-  } else {
-    autoOn = true;
-    scheduleAuto();
-  }
-  updateAutoButton();
-}
-
 // ── Actions ───────────────────────────────────────────────────────────────────
 
 async function action(a) {
   if (a === 'auto') { toggleAuto(); return; }
-
-  if (autoOn) { autoOn = false; if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } updateAutoButton(); }
-
+  stopAuto();
   setRendering(true);
   try {
     var s = await (await fetch('/' + a, { method: 'POST' })).json();
@@ -353,10 +347,19 @@ async function action(a) {
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
+function updateFileListCurrent() {
+  var el = document.getElementById('tab-content');
+  el.querySelectorAll('.file-row').forEach(function(row) {
+    var idx = parseInt(row.getAttribute('data-index'));
+    row.className = 'file-row' + (idx === currentFileIdx ? ' current' : '');
+  });
+  var active = el.querySelector('.current');
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
 async function loadTab() {
   var tab = activeTab;
   var el = document.getElementById('tab-content');
-
   el.className = tab === 'file-list' ? '' : 'json';
   el.innerHTML = '<span style="color:#555">Loading\u2026</span>';
 
@@ -397,14 +400,12 @@ function switchTab(tab, btn) {
   loadTab();
 }
 
-// ── File row clicks (event delegation) ───────────────────────────────────────
+// ── Event listeners ───────────────────────────────────────────────────────────
 
 document.getElementById('tab-content').addEventListener('click', function(e) {
   var row = e.target.closest('[data-index]');
   if (row) action('jump?i=' + row.getAttribute('data-index'));
 });
-
-// ── Speed + jump inputs ───────────────────────────────────────────────────────
 
 document.getElementById('speed-input').addEventListener('change', function() {
   var s = parseInt(this.value);
@@ -417,8 +418,6 @@ document.getElementById('jump-input').addEventListener('keydown', function(e) {
     if (i >= 1) { action('jump?i=' + i); this.value = ''; }
   }
 });
-
-// ── Keyboard shortcuts ────────────────────────────────────────────────────────
 
 document.addEventListener('keydown', function(e) {
   if (e.target.tagName === 'INPUT') return;
@@ -437,8 +436,7 @@ document.addEventListener('keydown', function(e) {
   var dragging = false;
   var startY, startHeight;
 
-  var saved = localStorage.getItem(STORAGE_KEY);
-  panel.style.height = (saved ? parseInt(saved) : 220) + 'px';
+  panel.style.height = (parseInt(localStorage.getItem(STORAGE_KEY)) || 220) + 'px';
 
   handle.addEventListener('mousedown', function(e) {
     dragging = true;
@@ -452,8 +450,8 @@ document.addEventListener('keydown', function(e) {
 
   document.addEventListener('mousemove', function(e) {
     if (!dragging) return;
-    var newHeight = Math.max(60, Math.min(window.innerHeight * 0.8, startHeight + (startY - e.clientY)));
-    panel.style.height = newHeight + 'px';
+    var h = Math.max(60, Math.min(window.innerHeight * 0.8, startHeight + (startY - e.clientY)));
+    panel.style.height = h + 'px';
   });
 
   document.addEventListener('mouseup', function() {
@@ -474,9 +472,29 @@ document.addEventListener('keydown', function(e) {
   document.getElementById('speed-input').value = s.initialAutoSpeed;
   onStateUpdate(s);
 })();
+
+// ── HMR ───────────────────────────────────────────────────────────────────────
+
+(function() {
+  var src = new EventSource('/hmr');
+  src.onerror = function() {
+    src.close();
+    function tryReload() {
+      fetch('/state').then(function() { location.reload(); }).catch(function() { setTimeout(tryReload, 300); });
+    }
+    setTimeout(tryReload, 500);
+  };
+})();
 </script>
 </body>
 </html>`;
+
+// ── HTTP server ───────────────────────────────────────────────────────────────
+
+function respond(res: http.ServerResponse, body: object) {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(body));
+}
 
 (async () => {
   console.log(`\n${files.length} files in ${dir}\n`);
@@ -486,6 +504,8 @@ document.addEventListener('keydown', function(e) {
   const server = http.createServer(async (req, res) => {
     const parsed = new URL(req.url ?? '/', 'http://localhost');
     const pathname = parsed.pathname;
+
+    // ── GET endpoints ────────────────────────────────────────────────────────
 
     if (pathname === '/img') {
       if (existsSync(OUTPUT)) {
@@ -498,21 +518,14 @@ document.addEventListener('keydown', function(e) {
       return;
     }
 
-    if (pathname === '/state') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(getStateJson()));
-      return;
-    }
+    if (pathname === '/state') { respond(res, getStateJson()); return; }
+    if (pathname === '/game-state') { respond(res, lastGameState ?? {}); return; }
+    if (pathname === '/game-data') { respond(res, lastGameData ?? {}); return; }
 
-    if (pathname === '/game-state') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(lastGameState ?? {}));
-      return;
-    }
-
-    if (pathname === '/game-data') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(lastGameData ?? {}));
+    if (pathname === '/hmr') {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
+      res.write(': connected\n\n');
+      req.on('close', () => res.end());
       return;
     }
 
@@ -522,25 +535,23 @@ document.addEventListener('keydown', function(e) {
         const entry = fileIndexMap.get(filename);
         return { index: i + 1, filename, tag: entry?.tag ?? 'unknown', label: entry?.label ?? '?' };
       });
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(list));
+      respond(res, list);
       return;
     }
+
+    // ── POST endpoints ───────────────────────────────────────────────────────
 
     if (req.method === 'POST') {
       if (pathname === '/next') {
         if (current < files.length - 1) { current++; await render(current); }
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(getStateJson()));
+        respond(res, getStateJson());
       } else if (pathname === '/prev') {
         if (current > 0) { current--; await render(current); }
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(getStateJson()));
+        respond(res, getStateJson());
       } else if (pathname === '/jump') {
         const i = Number(parsed.searchParams.get('i'));
         if (i >= 1 && i <= files.length) { current = i - 1; await render(current); }
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(getStateJson()));
+        respond(res, getStateJson());
       } else if (pathname === '/delete') {
         const file = files[current];
         try {
@@ -548,8 +559,7 @@ document.addEventListener('keydown', function(e) {
           files.splice(current, 1);
           console.log(`Deleted: ${path.basename(file)}`);
           if (files.length === 0) {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ done: true }));
+            respond(res, { done: true });
             server.close();
             process.exit(0);
           }
@@ -558,14 +568,15 @@ document.addEventListener('keydown', function(e) {
         } catch (e: any) {
           console.log(`Delete failed: ${e.message}`);
         }
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(getStateJson()));
+        respond(res, getStateJson());
       } else {
         res.writeHead(200);
         res.end();
       }
       return;
     }
+
+    // ── HTML ─────────────────────────────────────────────────────────────────
 
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(HTML);
@@ -580,5 +591,17 @@ document.addEventListener('keydown', function(e) {
   server.listen(PORT, async () => {
     await render(current);
     execSync(`open http://localhost:${PORT}`);
+
+    // Watch this file for changes; spawn a fresh process and exit when it changes
+    let restarting = false;
+    watch(__filename, () => {
+      if (restarting) return;
+      restarting = true;
+      console.log('\nwalkGame.ts changed — restarting…');
+      spawn(process.argv[0], process.argv.slice(1), { stdio: 'inherit', detached: true }).unref();
+      (server as any).closeAllConnections?.();
+      server.close();
+      process.exit(0);
+    });
   });
 })();
