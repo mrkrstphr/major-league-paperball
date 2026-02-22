@@ -36,10 +36,10 @@ export async function renderToImage(state: State): Promise<Buffer> {
   const w = screenWidth();
   const h = screenHeight();
   const Component = COMPONENTS[state.mode] ?? Offline;
-  const element = React.createElement(
-    'div',
-    { style: { display: 'flex', flexDirection: 'column', width: w, height: h } },
-    React.createElement(Component, state.data ?? {}),
+  const element = (
+    <div style={{ display: 'flex', flexDirection: 'column', width: w, height: h }}>
+      <Component {...(state.data ?? {})} />
+    </div>
   );
 
   const svg = await satori(element, {
@@ -55,5 +55,5 @@ export async function renderToImage(state: State): Promise<Buffer> {
     fitTo: { mode: 'width', value: screenWidth() },
   });
 
-  return Buffer.from(resvg.render().asPng());
+  return resvg.render().asPng();
 }

@@ -24,7 +24,6 @@
     "satori": "^0.19.2"
   },
   "devDependencies": {
-    "@fontsource/inter": "^5.2.8",
     "@storybook/addon-essentials": "^8.6.14",
     "@storybook/addon-interactions": "^8.6.14",
     "@storybook/addon-links": "^8.6.15",

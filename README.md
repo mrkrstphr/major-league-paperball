@@ -4,7 +4,7 @@
 
 major-league-paperball is an app that allows you to follow your favorite Major League Baseball (MLB) team, including live game updates, on a Waveshare 7.5" e-ink screen. It assumes you're running the app on a Raspberry Pi, but any device capable of running both Node and Python should work.
 
-The app works by running a Node web-app that uses the [MLB Stats](https://statsapi.mlb.com/docs) to fetch information about a specific team, uses [Puppeteer](https://pptr.dev/) to get a screenshot of the app, and finally uses a small Python script to draw the image to the e-ink screen.
+The app works by running a Node app that uses the [MLB Stats](https://statsapi.mlb.com/docs) to fetch information about a specific team, renders the display image directly using [Satori](https://github.com/vercel/satori) and [resvg-js](https://github.com/yisibl/resvg-js), and finally uses a small Python script to draw the image to the e-ink screen.
 
 ## Shopping List
 
@@ -16,7 +16,7 @@ In order to run this app, I suggest buying the 7.5" Waveshare e-ink screen with 
 
 ## Setup
 
-TL;DR: Setup your PI, install NodeJS, Python3, and chromium-browser. Clone the repo, copy `.env.example` to `.env`, adjust the values within, and then keep the app running with pm2.
+TL;DR: Setup your Pi, install NodeJS and Python3. Clone the repo, copy `.env.example` to `.env`, adjust the values within, and then keep the app running with pm2.
 
 ### Setup Your Raspberry Pi
 
@@ -56,12 +56,10 @@ sudo apt install python3
 
 ### Setup Misc Dependencies
 
-Since this app relies on taking screenshots of a web app running on the Pi, you'll need to install the Chromium browser so Puppeteer has something to fire up the app in and take the screenshot. You can configure Puppeteer to use another browser in the `.env` file you will create later.
-
-You'll also want `git` so that you can clone this repository. Alternately, you can download the source code from GitHub and unpack it on your Pi.
+You'll want `git` to clone this repository. Alternately, you can download the source code from GitHub and unpack it on your Pi.
 
 ```
-sudo apt install -y git chromium-browser
+sudo apt install -y git
 ```
 
 ### Running the App
@@ -103,13 +101,16 @@ The code aims to be a good steward of the MLB Stats API as well as the e-ink scr
 
 When no game is active, the screen fetches data, by default, every 20 minutes. When a game is active, it's every 20 seconds. If the data fetched is the same as last time, it doesn't bother refreshing the screen.
 
-If there is new data, the app uses Puppeteer to fire up a browser, set the resolution to 800x480, and take a screenshot. It then uses a Python script (since the native code provided by Waveshare is either Python or C) to send the image to the screen.
+If there is new data, the app renders a PNG directly in-process using [Satori](https://github.com/vercel/satori) (JSX → SVG) and [resvg-js](https://github.com/yisibl/resvg-js) (SVG → PNG) — no headless browser required. It then uses a Python script (since the native code provided by Waveshare is either Python or C) to send the image to the screen.
 
 ### States
 
-The app has a few states:
+The app has several display states:
 
-1.  No Game: There's no active game. The screen will show the standings of the division the team belongs to, as well as the result of the previous game (if any), and the details of the next scheduled game (if any).
-2.  Live Game: Shows information about the live game in progress: score, current inning, counts, base runners, last play, and last 3 scoring plays.
-3.  Final: Shows the final score of the last game for about 20 minutes after the game finishes.
-4.  Missing Team: Kindly reminds you that you didn't configure a team to follow.
+1.  **Offline**: Initial state before the first fetch completes.
+2.  **Missing Team**: Shown when `TEAM_ID` is not configured; displays a list of teams to choose from.
+3.  **Standings**: No game today or soon; shows division standings along with previous and upcoming game details.
+4.  **Preview**: A game is starting soon; shows the upcoming matchup.
+5.  **Live Game**: Game in progress; shows score, current inning, count, base runners, last play, and last 3 scoring plays.
+6.  **End of Inning**: Shown between half-innings during a live game.
+7.  **End of Game**: Shows the final score for approximately 20 minutes after the game ends.
