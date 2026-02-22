@@ -25,6 +25,8 @@ import { Cache } from '../types';
 import endOfGame from './endOfGame';
 import endOfInning from './endOfInning';
 
+const lastSavedSnapshot: Record<number, string> = {};
+
 export default async function liveGameState(
   gameId: number,
   cache: Cache,
@@ -47,12 +49,18 @@ export default async function liveGameState(
 
   if (debugDumpGame()) {
     if (game.liveData.plays.currentPlay.result.event) {
-      await mkdir(`debug/${gameId}`, { recursive: true });
+      const { metaData: _, ...gameWithoutMeta } = game;
+      const snapshot = JSON.stringify(gameWithoutMeta);
 
-      await writeFile(
-        `debug/${gameId}/${game.liveData.plays.currentPlay.about.endTime}.${game.liveData.plays.currentPlay.result.event}.json`,
-        JSON.stringify(game, null, 2),
-      );
+      if (snapshot !== lastSavedSnapshot[gameId]) {
+        lastSavedSnapshot[gameId] = snapshot;
+        await mkdir(`debug/${gameId}`, { recursive: true });
+
+        await writeFile(
+          `debug/${gameId}/${game.liveData.plays.currentPlay.about.endTime}.${game.liveData.plays.currentPlay.result.event}.json`,
+          JSON.stringify(game, null, 2),
+        );
+      }
     }
   }
 

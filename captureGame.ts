@@ -23,6 +23,8 @@ import { join } from 'path';
 const BASE_URL = 'https://statsapi.mlb.com/api';
 const CAPTURES_DIR = 'captures';
 
+const lastSavedSnapshot: Record<number, string> = {};
+
 const teamId = parseInt(process.argv[2] ?? process.env.TEAM_ID ?? '0', 10);
 
 if (!teamId) {
@@ -74,10 +76,20 @@ async function capture(): Promise<void> {
       `${BASE_URL}/v1.1/game/${gamePk}/feed/live`
     );
 
+    const status = liveGame.gameData?.status?.detailedState ?? 'unknown';
+
+    const { metaData: _, ...liveGameWithoutMeta } = liveGame;
+    const snapshot = JSON.stringify(liveGameWithoutMeta);
+
+    if (snapshot === lastSavedSnapshot[gamePk]) {
+      console.log(`[${new Date().toISOString()}] ${gamePk} (${status}) → no change, skipping`);
+      continue;
+    }
+
+    lastSavedSnapshot[gamePk] = snapshot;
     const snapshotFile = join(gameDir, `livegame-${isoTimestamp()}.json`);
     await writeFile(snapshotFile, JSON.stringify(liveGame, null, 2));
 
-    const status = liveGame.gameData?.status?.detailedState ?? 'unknown';
     console.log(`[${new Date().toISOString()}] ${gamePk} (${status}) → ${snapshotFile}`);
   }
 }
