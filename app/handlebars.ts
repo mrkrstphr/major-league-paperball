@@ -2,7 +2,7 @@ import fs from 'fs';
 import handlebars from 'handlebars';
 import path from 'path';
 
-export default function configureHandlebars() {
+export default async function configureHandlebars() {
   const partialsDir = `${__dirname}/views/partials`;
   const helpersDir = `${__dirname}/views/helpers`;
 
@@ -17,12 +17,15 @@ export default function configureHandlebars() {
     }
   });
 
-  fs.readdirSync(helpersDir).forEach(async (filename) => {
-    if (filename.endsWith('.ts') || filename.endsWith('.js')) {
-      const name = path.parse(filename).name;
-      const func = await import(`./views/helpers/${filename}`);
+  await Promise.all(
+    fs
+      .readdirSync(helpersDir)
+      .filter((filename) => filename.endsWith('.ts') || filename.endsWith('.js'))
+      .map(async (filename) => {
+        const name = path.parse(filename).name;
+        const func = await import(`./views/helpers/${filename}`);
 
-      handlebars.registerHelper(name, func.default);
-    }
-  });
+        handlebars.registerHelper(name, func.default);
+      }),
+  );
 }

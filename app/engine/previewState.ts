@@ -47,7 +47,7 @@ export default async function previewState(
     data: {
       followedTeam: followedTeam(game, cache.team),
       opponentTeam: opponentTeam(game, cache.team),
-      atOrVs: 'vs',
+      atOrVs: homeOrAway === 'home' ? 'vs' : 'at',
       gameTime: formatTime(game.gameData.datetime.dateTime),
 
       seriesTied: true,

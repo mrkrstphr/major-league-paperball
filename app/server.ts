@@ -6,7 +6,7 @@ import { getState } from './state';
 
 const app = express();
 
-configureHandlebars();
+export const ready = configureHandlebars();
 
 app.engine('.hbs', engine({ extname: '.hbs' }));
 app.set('view engine', '.hbs');

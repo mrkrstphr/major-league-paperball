@@ -8,20 +8,21 @@ import { Cache } from './types';
 
 export default async function standingsState(
   currentState: State,
-  cache: Cache
+  cache: Cache,
 ) {
   // refetch schedule and standings every 20 minutes
   if (
-    currentState?.mode === 'next-game' &&
     currentState?.lastFetch &&
     currentState?.lastFetch >= subMinutes(new Date(), 20)
   ) {
     return currentState;
   }
 
+  console.info('[paperball] standingsState: fetching standings');
+
   const standings = await getStandingsForLeague(cache.team.league.id);
   const divisionStandings = standings.find(
-    (record) => record.division.id === cache.team.division.id
+    (record) => record.division.id === cache.team.division.id,
   );
 
   const standingsData =
@@ -39,11 +40,11 @@ export default async function standingsState(
   const nextScheduledGame = cache.schedule?.games.find(
     (game) =>
       new Date(game.gameDate) >= new Date() &&
-      game.status.abstractGameCode !== 'F'
+      game.status.abstractGameCode !== 'F',
   );
 
   const lastFinishedGame = reverse(cache.schedule?.games ?? []).find(
-    (game) => game.status.abstractGameCode === 'F'
+    (game) => game.status.abstractGameCode === 'F',
   );
 
   const nextGame = isNotNil(nextScheduledGame) && {

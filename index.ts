@@ -4,7 +4,7 @@ import 'dotenv/config';
 import puppeteer from 'puppeteer-core';
 import { equals } from 'ramda';
 import getNextState from './app/engine/index';
-import server from './app/server';
+import server, { ready } from './app/server';
 import { getState, setState } from './app/state';
 import {
   browserBin,
@@ -77,15 +77,19 @@ async function runTick() {
   }
 }
 
-runTick();
+(async () => {
+  await ready;
 
-CronJob.from({
-  cronTime: '*/20 * * * * *',
-  onTick: runTick,
-  start: true,
-  timeZone: 'America/Los_Angeles',
-});
+  runTick();
 
-server.listen(port, () => {
-  console.log(`⚾ listening on port ${port}`);
-});
+  CronJob.from({
+    cronTime: '*/20 * * * * *',
+    onTick: runTick,
+    start: true,
+    timeZone: 'America/Los_Angeles',
+  });
+
+  server.listen(port, () => {
+    console.log(`⚾ listening on port ${port}`);
+  });
+})();
