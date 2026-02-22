@@ -1,3 +1,4 @@
+import { subMinutes } from 'date-fns';
 import { getLiveGameFeed } from '../api';
 import { State } from '../state';
 import { LiveGame_LiveData_BoxScore_Team_Player } from '../types';
@@ -28,6 +29,17 @@ export default async function previewState(
   currentState: State,
   cache: Cache
 ) {
+  // refetch preview data every 5 minutes
+  if (
+    currentState?.mode === 'preview' &&
+    currentState?.lastFetch &&
+    currentState?.lastFetch >= subMinutes(new Date(), 5)
+  ) {
+    return currentState;
+  }
+
+  console.info('[paperball] previewState: fetching game feed');
+
   const game = await getLiveGameFeed(gameId);
   const homeOrAway = followedHomeOrAway(game, cache.team);
 
@@ -63,5 +75,6 @@ export default async function previewState(
         opponent: getPitcherDetails(opponentPitcher),
       },
     },
+    lastFetch: new Date(),
   };
 }
