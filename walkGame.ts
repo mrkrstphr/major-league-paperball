@@ -45,6 +45,8 @@ let current = 0;
 let autoTimer: ReturnType<typeof setInterval> | null = null;
 let rendering = false;
 let lastMode = '';
+let lastGameState: any = null;
+let lastGameData: any = null;
 let renderCount = 0;
 
 async function render(i: number) {
@@ -61,6 +63,8 @@ async function render(i: number) {
     const png = await renderToImage(state);
     await writeFile(OUTPUT, png);
     lastMode = state.mode;
+    lastGameState = state;
+    lastGameData = data;
     renderCount++;
     console.log(`[${i + 1}/${files.length}]  ${name}  →  ${state.mode}`);
   } catch (e: any) {
@@ -111,8 +115,14 @@ button { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; f
 #status { flex: 1; font-size: 13px; color: #aaa; padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #status.rendering { color: #f0a030; }
 #hint { font-size: 11px; color: #555; flex-shrink: 0; }
-#image-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px; min-height: 0; background: #fff; }
-img { max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid #ccc; }
+#image-wrap { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; padding: 12px; background: #fff; }
+#image-wrap img { max-width: 100%; max-height: 42vh; object-fit: contain; border: 1px solid #ccc; }
+#data-section { flex: 1; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid #333; }
+#tab-bar { display: flex; background: #111; border-bottom: 1px solid #333; flex-shrink: 0; }
+.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; border-radius: 0; color: #666; padding: 8px 20px; cursor: pointer; font: inherit; font-size: 12px; }
+.tab-btn:hover { color: #aaa; }
+.tab-btn.active { color: #fff; border-bottom-color: #fff; }
+#tab-content { flex: 1; overflow: auto; padding: 12px 16px; font-size: 12px; line-height: 1.5; white-space: pre; color: #ccc; }
 </style>
 </head>
 <body>
@@ -127,10 +137,32 @@ img { max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid 
 <div id="image-wrap">
   <img id="img" src="/img">
 </div>
+<div id="data-section">
+  <div id="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('game-state', this)">Game State</button>
+    <button class="tab-btn" onclick="switchTab('game-data', this)">Raw Game Data</button>
+  </div>
+  <div id="tab-content">Loading&hellip;</div>
+</div>
 <script>
 function action(a) { fetch('/' + a, { method: 'POST' }); }
 
 let lastRenderCount = -1;
+let activeTab = 'game-state';
+
+async function loadTab() {
+  try {
+    const data = await (await fetch('/' + activeTab)).json();
+    document.getElementById('tab-content').textContent = JSON.stringify(data, null, 2);
+  } catch(e) {}
+}
+
+function switchTab(tab, btn) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.className = 'tab-btn'; });
+  btn.className = 'tab-btn active';
+  loadTab();
+}
 
 async function poll() {
   try {
@@ -152,6 +184,7 @@ async function poll() {
     if (s.renderCount !== lastRenderCount) {
       lastRenderCount = s.renderCount;
       document.getElementById('img').src = '/img?t=' + Date.now();
+      loadTab();
     }
   } catch(e) {}
 }
@@ -198,6 +231,18 @@ document.addEventListener('keydown', function(e) {
         autoSpeed: AUTO_SPEED / 1000,
         renderCount,
       }));
+      return;
+    }
+
+    if (url === '/game-state') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(lastGameState ?? {}));
+      return;
+    }
+
+    if (url === '/game-data') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(lastGameData ?? {}));
       return;
     }
 
