@@ -49,7 +49,7 @@ export default async function liveGameState(
 
   if (debugDumpGame()) {
     if (game.liveData.plays.currentPlay.result.event) {
-      const { metaData: _, ...gameWithoutMeta } = game;
+      const { metaData: _, ...gameWithoutMeta } = game as any;
       const snapshot = JSON.stringify(gameWithoutMeta);
 
       if (snapshot !== lastSavedSnapshot[gameId]) {

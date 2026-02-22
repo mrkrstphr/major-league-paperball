@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "build": "./bin/build.sh",
-    "dev": "nodemon -e ts,hbs index.ts",
+    "dev": "nodemon -e ts,tsx index.ts",
     "start": "node index.js",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
@@ -13,16 +13,18 @@
     "capture": "ts-node captureGame.ts"
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "axios": "^1.13.5",
     "cron": "^4.4.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "express-handlebars": "^8.0.3",
-    "puppeteer-core": "^24.37.3",
-    "ramda": "^0.32.0"
+    "ramda": "^0.32.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "satori": "^0.19.2"
   },
   "devDependencies": {
+    "@fontsource/inter": "^5.2.8",
     "@storybook/addon-essentials": "^8.6.14",
     "@storybook/addon-interactions": "^8.6.14",
     "@storybook/addon-links": "^8.6.15",
@@ -32,9 +34,10 @@
     "@storybook/html-vite": "^8.6.15",
     "@storybook/html-webpack5": "^8.6.14",
     "@storybook/test": "^8.6.15",
-    "@types/express": "^5.0.6",
     "@types/node": "^25.2.3",
     "@types/ramda": "^0.31.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "handlebars-loader": "^1.7.3",
     "nodemon": "^3.1.11",
     "storybook": "^8.6.15",
