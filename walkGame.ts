@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { execSync } from 'child_process';
 import http from 'http';
-import { existsSync, readFileSync, readdirSync, unlinkSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from 'fs';
 import { writeFile } from 'fs/promises';
 import path from 'path';
 import { processGameState } from './app/engine/liveGameState';
@@ -20,12 +20,13 @@ if (!existsSync(dir)) {
 }
 
 const speedIdx = process.argv.indexOf('--auto-speed');
-let autoSpeed = speedIdx !== -1 ? Number(process.argv[speedIdx + 1]) * 1000 : 5000;
+const initialAutoSpeed = speedIdx !== -1 ? Number(process.argv[speedIdx + 1]) : 5;
 
 let files = readdirSync(dir)
-  .filter((f) => f.endsWith('.json'))
+  .filter((f) => f.endsWith('.json') && f !== 'index.json')
   .sort()
-  .map((f) => path.join(dir, f));
+  .map((f) => path.join(dir, f))
+  .filter((f) => statSync(f).isFile());
 
 if (files.length === 0) {
   console.log('No JSON files found.');
@@ -34,6 +35,11 @@ if (files.length === 0) {
 
 const OUTPUT = 'walkgame.png';
 const PORT = 9998;
+const INDEX_FILE = path.join(dir, 'index.json');
+
+type IndexEntry = { filename: string; tag: string; label: string };
+let fileIndex: IndexEntry[] = [];
+let fileIndexMap = new Map<string, IndexEntry>();
 
 const cache = {
   schedule: undefined,
@@ -42,7 +48,6 @@ const cache = {
 };
 
 let current = 0;
-let autoTimer: ReturnType<typeof setInterval> | null = null;
 let rendering = false;
 let lastMode = '';
 let lastGameState: any = null;
@@ -74,23 +79,86 @@ async function render(i: number) {
   rendering = false;
 }
 
-function stopAuto() {
-  if (autoTimer) {
-    clearInterval(autoTimer);
-    autoTimer = null;
+function getStateJson() {
+  return {
+    current: current + 1,
+    total: files.length,
+    filename: path.basename(files[current] ?? ''),
+    mode: lastMode,
+    rendering,
+    renderCount,
+    initialAutoSpeed,
+  };
+}
+
+function analyzeFile(data: any): { tag: string; label: string } {
+  try {
+    const cp = data?.liveData?.plays?.currentPlay;
+    const status = data?.gameData?.status?.abstractGameCode;
+    const inningState = data?.liveData?.linescore?.inningState;
+    const inningOrdinal = data?.liveData?.linescore?.currentInningOrdinal ?? '';
+
+    if (status === 'F') return { tag: 'final', label: 'Final' };
+    if (inningState === 'Middle' || inningState === 'End') return { tag: 'eoi', label: `End ${inningOrdinal}` };
+    if (!cp) return { tag: 'unknown', label: '?' };
+
+    const event: string = cp.result?.event ?? '';
+    const eventType: string = cp.result?.eventType ?? '';
+    const isOut: boolean = cp.result?.isOut === true;
+    const isScoringPlay: boolean = cp.about?.isScoringPlay === true;
+
+    if (isScoringPlay) return { tag: 'score', label: event || 'Score' };
+    if (isOut && eventType === 'strikeout') return { tag: 'strikeout', label: 'Strikeout' };
+    if (isOut) return { tag: 'out', label: event || 'Out' };
+    if (['Single', 'Double', 'Triple', 'Home Run'].includes(event)) return { tag: 'hit', label: event };
+    if (eventType === 'walk' || event === 'Walk') return { tag: 'walk', label: 'Walk' };
+    if (event === 'Hit By Pitch') return { tag: 'hbp', label: 'HBP' };
+
+    const count = cp.count;
+    if (count != null) return { tag: 'count', label: `${count.balls ?? 0}-${count.strikes ?? 0}, ${count.outs ?? 0} out` };
+
+    return { tag: 'unknown', label: event || '?' };
+  } catch {
+    return { tag: 'error', label: 'Error' };
   }
 }
 
-function startAuto() {
-  autoTimer = setInterval(async () => {
-    if (current < files.length - 1) {
-      current++;
-      await render(current);
-    } else {
-      stopAuto();
-      console.log('Auto: reached end.');
+function applyIndex() {
+  fileIndexMap = new Map(fileIndex.map((e) => [e.filename, e]));
+}
+
+async function buildIndex() {
+  if (existsSync(INDEX_FILE)) {
+    try {
+      fileIndex = JSON.parse(readFileSync(INDEX_FILE, 'utf8'));
+      applyIndex();
+      return;
+    } catch {
+      // fall through and rebuild
     }
-  }, autoSpeed);
+  }
+
+  if (existsSync(INDEX_FILE) && statSync(INDEX_FILE).isDirectory()) {
+    console.log(`Warning: ${INDEX_FILE} is a directory — skipping index creation.`);
+    return;
+  }
+
+  console.log(`Creating index.json… (${files.length} files)`);
+  const BAR = 40;
+  fileIndex = files.map((f, i) => {
+    const filled = Math.round(((i + 1) / files.length) * BAR);
+    process.stdout.write(`\r  [${'█'.repeat(filled)}${'░'.repeat(BAR - filled)}] ${i + 1}/${files.length}`);
+    try {
+      const data = JSON.parse(readFileSync(f, 'utf8'));
+      const { tag, label } = analyzeFile(data);
+      return { filename: path.basename(f), tag, label };
+    } catch {
+      return { filename: path.basename(f), tag: 'error', label: 'Parse Error' };
+    }
+  });
+  process.stdout.write('\n');
+  await writeFile(INDEX_FILE, JSON.stringify(fileIndex, null, 2));
+  applyIndex();
 }
 
 const HTML = `<!DOCTYPE html>
@@ -130,7 +198,25 @@ button { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; f
 .ctrl input[type=number] { background: #222; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 3px 6px; font: inherit; font-size: 12px; width: 52px; -moz-appearance: textfield; }
 .ctrl input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
 .ctrl input[type=number]:focus { outline: none; border-color: #777; color: #fff; }
-#tab-content { flex: 1; overflow: auto; padding: 10px 14px; font-size: 12px; line-height: 1.5; white-space: pre; color: #ccc; }
+#tab-content { flex: 1; overflow: auto; padding: 10px 14px; font-size: 12px; line-height: 1.5; color: #ccc; }
+#tab-content.json { white-space: pre; }
+.file-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 3px; cursor: pointer; white-space: nowrap; }
+.file-row:hover { background: #2a2a2a; }
+.file-row.current { background: #333; }
+.file-idx { color: #555; width: 32px; text-align: right; flex-shrink: 0; }
+.file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; color: #aaa; }
+.file-tag { padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: bold; flex-shrink: 0; }
+.tag-score    { background: #3a3000; color: #ffd055; }
+.tag-hit      { background: #002a40; color: #55ccff; }
+.tag-strikeout{ background: #3a0000; color: #ff7070; }
+.tag-out      { background: #2a1500; color: #ff9944; }
+.tag-walk     { background: #002a10; color: #55ee88; }
+.tag-hbp      { background: #2a0030; color: #cc88ff; }
+.tag-eoi      { background: #002a2a; color: #55ddcc; }
+.tag-final    { background: #1a1a00; color: #ddcc55; }
+.tag-count    { background: #1e1e1e; color: #777; }
+.tag-unknown  { background: #1e1e1e; color: #555; }
+.tag-error    { background: #300; color: #f66; }
 </style>
 </head>
 <body>
@@ -150,6 +236,7 @@ button { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; f
   <div id="tab-bar">
     <button class="tab-btn active" onclick="switchTab('game-state', this)">Game State</button>
     <button class="tab-btn" onclick="switchTab('game-data', this)">Raw Game Data</button>
+    <button class="tab-btn" onclick="switchTab('file-list', this)">Files</button>
     <div id="tab-controls">
       <div class="ctrl">
         <span>Speed</span>
@@ -166,17 +253,141 @@ button { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; f
   <div id="tab-content">Loading&hellip;</div>
 </div>
 <script>
-function action(a) { fetch('/' + a, { method: 'POST' }); }
+var activeTab = 'game-state';
+var currentFileIdx = 1;
+var autoOn = false;
+var autoTimer = null;
+var autoSpeed = 5;
 
-let lastRenderCount = -1;
-let activeTab = 'game-state';
-let speedInitialized = false;
+// ── UI helpers ────────────────────────────────────────────────────────────────
+
+function setRendering(r) {
+  document.getElementById('btn-prev').disabled = r;
+  document.getElementById('btn-next').disabled = r;
+  document.getElementById('btn-delete').disabled = r;
+  var status = document.getElementById('status');
+  if (r) { status.className = 'rendering'; }
+}
+
+function onStateUpdate(s, refreshFileList) {
+  currentFileIdx = s.current;
+  var status = document.getElementById('status');
+  status.textContent = '[' + s.current + '/' + s.total + ']  ' + s.filename + '  \u2192  ' + s.mode;
+  status.className = '';
+  document.getElementById('btn-prev').disabled = false;
+  document.getElementById('btn-next').disabled = false;
+  document.getElementById('btn-delete').disabled = false;
+  document.getElementById('img').src = '/img?t=' + Date.now();
+  document.getElementById('jump-max').textContent = '/ ' + s.total;
+  document.getElementById('jump-input').max = s.total;
+  if (activeTab === 'file-list' && !refreshFileList) {
+    updateFileListCurrent();
+  } else {
+    loadTab();
+  }
+}
+
+function updateAutoButton() {
+  var btn = document.getElementById('btn-auto');
+  btn.textContent = autoOn ? '\u23f9 Stop' : '\u25b6 Auto';
+  btn.className = autoOn ? 'active' : '';
+}
+
+function updateFileListCurrent() {
+  var el = document.getElementById('tab-content');
+  el.querySelectorAll('.file-row').forEach(function(row) {
+    var idx = parseInt(row.getAttribute('data-index'));
+    row.className = 'file-row' + (idx === currentFileIdx ? ' current' : '');
+  });
+  var active = el.querySelector('.current');
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+// ── Auto mode (client-side setTimeout chain) ──────────────────────────────────
+
+function scheduleAuto() {
+  autoTimer = setTimeout(async function() {
+    if (!autoOn) return;
+    setRendering(true);
+    try {
+      var s = await (await fetch('/next', { method: 'POST' })).json();
+      onStateUpdate(s, false);
+      if (s.current >= s.total) {
+        autoOn = false;
+        updateAutoButton();
+        return;
+      }
+    } catch(e) {
+      setRendering(false);
+    }
+    if (autoOn) scheduleAuto();
+  }, autoSpeed * 1000);
+}
+
+function toggleAuto() {
+  if (autoOn) {
+    autoOn = false;
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+  } else {
+    autoOn = true;
+    scheduleAuto();
+  }
+  updateAutoButton();
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+
+async function action(a) {
+  if (a === 'auto') { toggleAuto(); return; }
+
+  if (autoOn) { autoOn = false; if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } updateAutoButton(); }
+
+  setRendering(true);
+  try {
+    var s = await (await fetch('/' + a, { method: 'POST' })).json();
+    onStateUpdate(s, a === 'delete');
+  } catch(e) {
+    setRendering(false);
+  }
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
 
 async function loadTab() {
-  try {
-    const data = await (await fetch('/' + activeTab)).json();
-    document.getElementById('tab-content').textContent = JSON.stringify(data, null, 2);
-  } catch(e) {}
+  var tab = activeTab;
+  var el = document.getElementById('tab-content');
+
+  el.className = tab === 'file-list' ? '' : 'json';
+  el.innerHTML = '<span style="color:#555">Loading\u2026</span>';
+
+  if (tab === 'file-list') {
+    try {
+      var list = await (await fetch('/file-list')).json();
+      if (activeTab !== tab) return;
+      var html = '';
+      list.forEach(function(f) {
+        var cls = 'file-row' + (f.index === currentFileIdx ? ' current' : '');
+        html += '<div class="' + cls + '" data-index="' + f.index + '">';
+        html += '<span class="file-idx">' + f.index + '</span>';
+        html += '<span class="file-name">' + f.filename + '</span>';
+        html += '<span class="file-tag tag-' + f.tag + '">' + f.label + '</span>';
+        html += '</div>';
+      });
+      el.innerHTML = html;
+      var active = el.querySelector('.current');
+      if (active) active.scrollIntoView({ block: 'nearest' });
+    } catch(e) {
+      if (activeTab === tab) el.innerHTML = '<span style="color:#f66">Error loading file list</span>';
+    }
+  } else {
+    try {
+      var data = await (await fetch('/' + tab)).json();
+      if (activeTab !== tab) return;
+      el.textContent = JSON.stringify(data, null, 2);
+    } catch(e) {
+      if (activeTab === tab) el.innerHTML = '<span style="color:#f66">Error loading data</span>';
+    }
+  }
 }
 
 function switchTab(tab, btn) {
@@ -186,56 +397,28 @@ function switchTab(tab, btn) {
   loadTab();
 }
 
-async function poll() {
-  try {
-    const s = await (await fetch('/state')).json();
-    const status = document.getElementById('status');
-    const autoBtn = document.getElementById('btn-auto');
+// ── File row clicks (event delegation) ───────────────────────────────────────
 
-    status.textContent = s.rendering
-      ? '[' + s.current + '/' + s.total + ']  ' + s.filename + '  \u2192  rendering\u2026'
-      : '[' + s.current + '/' + s.total + ']  ' + s.filename + '  \u2192  ' + s.mode;
-    status.className = s.rendering ? 'rendering' : '';
+document.getElementById('tab-content').addEventListener('click', function(e) {
+  var row = e.target.closest('[data-index]');
+  if (row) action('jump?i=' + row.getAttribute('data-index'));
+});
 
-    document.getElementById('btn-prev').disabled = s.rendering;
-    document.getElementById('btn-next').disabled = s.rendering;
-
-    autoBtn.textContent = s.autoOn ? '\u23f9 Stop' : '\u25b6 Auto';
-    autoBtn.className = s.autoOn ? 'active' : '';
-
-    if (!speedInitialized) {
-      document.getElementById('speed-input').value = s.autoSpeed;
-      speedInitialized = true;
-    }
-
-    document.getElementById('jump-max').textContent = '/ ' + s.total;
-    document.getElementById('jump-input').max = s.total;
-
-    if (s.renderCount !== lastRenderCount) {
-      lastRenderCount = s.renderCount;
-      document.getElementById('img').src = '/img?t=' + Date.now();
-      loadTab();
-    }
-  } catch(e) {}
-}
-
-setInterval(poll, 300);
-poll();
+// ── Speed + jump inputs ───────────────────────────────────────────────────────
 
 document.getElementById('speed-input').addEventListener('change', function() {
   var s = parseInt(this.value);
-  if (s >= 1) fetch('/set-speed?s=' + s, { method: 'POST' });
+  if (s >= 1) autoSpeed = s;
 });
 
 document.getElementById('jump-input').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
     var i = parseInt(this.value);
-    if (i >= 1) {
-      fetch('/jump?i=' + i, { method: 'POST' });
-      this.value = '';
-    }
+    if (i >= 1) { action('jump?i=' + i); this.value = ''; }
   }
 });
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
 
 document.addEventListener('keydown', function(e) {
   if (e.target.tagName === 'INPUT') return;
@@ -244,6 +427,8 @@ document.addEventListener('keydown', function(e) {
   else if (e.key === 'a') action('auto');
   else if (e.key === 'd') action('delete');
 });
+
+// ── Resize handle ─────────────────────────────────────────────────────────────
 
 (function() {
   var handle = document.getElementById('resize-handle');
@@ -280,6 +465,15 @@ document.addEventListener('keydown', function(e) {
     localStorage.setItem(STORAGE_KEY, panel.offsetHeight);
   });
 })();
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+(async function() {
+  var s = await (await fetch('/state')).json();
+  autoSpeed = s.initialAutoSpeed;
+  document.getElementById('speed-input').value = s.initialAutoSpeed;
+  onStateUpdate(s);
+})();
 </script>
 </body>
 </html>`;
@@ -287,7 +481,9 @@ document.addEventListener('keydown', function(e) {
 (async () => {
   console.log(`\n${files.length} files in ${dir}\n`);
 
-  const server = http.createServer((req, res) => {
+  await buildIndex();
+
+  const server = http.createServer(async (req, res) => {
     const parsed = new URL(req.url ?? '/', 'http://localhost');
     const pathname = parsed.pathname;
 
@@ -304,16 +500,7 @@ document.addEventListener('keydown', function(e) {
 
     if (pathname === '/state') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        current: current + 1,
-        total: files.length,
-        filename: path.basename(files[current] ?? ''),
-        mode: lastMode,
-        rendering,
-        autoOn: autoTimer !== null,
-        autoSpeed: autoSpeed / 1000,
-        renderCount,
-      }));
+      res.end(JSON.stringify(getStateJson()));
       return;
     }
 
@@ -329,49 +516,53 @@ document.addEventListener('keydown', function(e) {
       return;
     }
 
-    if (req.method === 'POST') {
-      res.writeHead(200);
-      res.end();
+    if (pathname === '/file-list') {
+      const list = files.map((f, i) => {
+        const filename = path.basename(f);
+        const entry = fileIndexMap.get(filename);
+        return { index: i + 1, filename, tag: entry?.tag ?? 'unknown', label: entry?.label ?? '?' };
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(list));
+      return;
+    }
 
+    if (req.method === 'POST') {
       if (pathname === '/next') {
-        stopAuto();
-        if (current < files.length - 1) { current++; render(current); }
+        if (current < files.length - 1) { current++; await render(current); }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(getStateJson()));
       } else if (pathname === '/prev') {
-        stopAuto();
-        if (current > 0) { current--; render(current); }
-      } else if (pathname === '/auto') {
-        if (autoTimer) { stopAuto(); } else { startAuto(); }
+        if (current > 0) { current--; await render(current); }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(getStateJson()));
+      } else if (pathname === '/jump') {
+        const i = Number(parsed.searchParams.get('i'));
+        if (i >= 1 && i <= files.length) { current = i - 1; await render(current); }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(getStateJson()));
       } else if (pathname === '/delete') {
-        stopAuto();
         const file = files[current];
         try {
           unlinkSync(file);
           files.splice(current, 1);
           console.log(`Deleted: ${path.basename(file)}`);
           if (files.length === 0) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ done: true }));
             server.close();
-            console.log('No files remaining.');
             process.exit(0);
           }
           if (current >= files.length) current = files.length - 1;
-          render(current);
+          await render(current);
         } catch (e: any) {
           console.log(`Delete failed: ${e.message}`);
         }
-      } else if (pathname === '/set-speed') {
-        const s = Number(parsed.searchParams.get('s'));
-        if (s > 0) {
-          autoSpeed = s * 1000;
-          if (autoTimer) { stopAuto(); startAuto(); }
-          console.log(`Auto speed set to ${s}s`);
-        }
-      } else if (pathname === '/jump') {
-        const i = Number(parsed.searchParams.get('i'));
-        if (i >= 1 && i <= files.length) {
-          stopAuto();
-          current = i - 1;
-          render(current);
-        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(getStateJson()));
+      } else {
+        res.writeHead(200);
+        res.end();
       }
       return;
     }
@@ -380,7 +571,11 @@ document.addEventListener('keydown', function(e) {
     res.end(HTML);
   });
 
-  process.on('SIGINT', () => { server.close(); process.exit(0); });
+  process.on('SIGINT', () => {
+    (server as any).closeAllConnections?.();
+    server.close();
+    process.exit(0);
+  });
 
   server.listen(PORT, async () => {
     await render(current);
