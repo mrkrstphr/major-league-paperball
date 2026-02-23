@@ -4,7 +4,7 @@ import Boxscore from './partials/Boxscore';
 
 type Props = Record<string, any>;
 
-export default function EndOfGame({ winningTeam, winnerScore, loserScore, totalInnings, scheduledInnings, boxscore, teams }: Props) {
+export default function EndOfGame({ winningTeam, winnerScore, loserScore, totalInnings, scheduledInnings, lastPlayDescription, boxscore, teams }: Props) {
   const isExtraInnings = totalInnings > scheduledInnings;
   const finalLabel = isExtraInnings ? `Final/${totalInnings}` : 'Final';
 
@@ -19,6 +19,11 @@ export default function EndOfGame({ winningTeam, winnerScore, loserScore, totalI
 
       <div style={{ display: 'flex', flexDirection: 'column', marginTop: 32, width: '83%', alignSelf: 'center', padding: `0 ${SCREEN_PADDING}px` }}>
         <Boxscore boxscore={boxscore} teams={teams} />
+        {lastPlayDescription && (
+          <div style={{ display: 'flex', fontSize: font.sm, marginTop: 20, flexWrap: 'wrap' }}>
+            {lastPlayDescription}
+          </div>
+        )}
       </div>
     </div>
   );
