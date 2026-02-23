@@ -4,7 +4,7 @@ import Boxscore from './partials/Boxscore';
 
 type Props = Record<string, any>;
 
-export default function EndOfInning({ upNext, inningDescription, boxscore, teams }: Props) {
+export default function EndOfInning({ upNext, inningDescription, lastPlayDescription, boxscore, teams }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={headerBanner}>
@@ -14,6 +14,11 @@ export default function EndOfInning({ upNext, inningDescription, boxscore, teams
 
       <div style={{ display: 'flex', flexDirection: 'column', marginTop: 32, width: '83%', alignSelf: 'center', padding: `0 ${SCREEN_PADDING}px` }}>
         <Boxscore boxscore={boxscore} teams={teams} />
+        {lastPlayDescription && (
+          <div style={{ display: 'flex', fontSize: font.sm, marginTop: 20, flexWrap: 'wrap' }}>
+            {lastPlayDescription}
+          </div>
+        )}
       </div>
     </div>
   );
