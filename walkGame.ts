@@ -1,7 +1,6 @@
 import 'dotenv/config';
-import { spawn } from 'child_process';
 import http from 'http';
-import { existsSync, readFileSync, readdirSync, statSync, unlinkSync, watch } from 'fs';
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from 'fs';
 import { writeFile } from 'fs/promises';
 import path from 'path';
 import { processGameState } from './app/engine/liveGameState';
@@ -472,19 +471,6 @@ document.addEventListener('keydown', function(e) {
   document.getElementById('speed-input').value = s.initialAutoSpeed;
   onStateUpdate(s);
 })();
-
-// ── HMR ───────────────────────────────────────────────────────────────────────
-
-(function() {
-  var src = new EventSource('/hmr');
-  src.onerror = function() {
-    src.close();
-    function tryReload() {
-      fetch('/state').then(function() { location.reload(); }).catch(function() { setTimeout(tryReload, 300); });
-    }
-    setTimeout(tryReload, 500);
-  };
-})();
 </script>
 </body>
 </html>`;
@@ -521,13 +507,6 @@ function respond(res: http.ServerResponse, body: object) {
     if (pathname === '/state') { respond(res, getStateJson()); return; }
     if (pathname === '/game-state') { respond(res, lastGameState ?? {}); return; }
     if (pathname === '/game-data') { respond(res, lastGameData ?? {}); return; }
-
-    if (pathname === '/hmr') {
-      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
-      res.write(': connected\n\n');
-      req.on('close', () => res.end());
-      return;
-    }
 
     if (pathname === '/file-list') {
       const list = files.map((f, i) => {
@@ -591,17 +570,5 @@ function respond(res: http.ServerResponse, body: object) {
   server.listen(PORT, async () => {
     await render(current);
     console.log(`\nReady → http://localhost:${PORT}\n`);
-
-    // Watch this file for changes; spawn a fresh process and exit when it changes
-    let restarting = false;
-    watch(__filename, () => {
-      if (restarting) return;
-      restarting = true;
-      console.log('\nwalkGame.ts changed — restarting…');
-      spawn(process.argv[0], process.argv.slice(1), { stdio: 'inherit', detached: true }).unref();
-      (server as any).closeAllConnections?.();
-      server.close();
-      process.exit(0);
-    });
   });
 })();
