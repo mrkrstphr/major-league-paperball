@@ -12,7 +12,7 @@ export default function EndOfGame({ winningTeam, winnerScore, loserScore, totalI
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={headerBanner}>
         <div style={{ display: 'flex', fontSize: font['2xl'] }}>
-          {`${winningTeam?.name} win ${winnerScore}-${loserScore}`}
+          {winningTeam ? `${winningTeam.name} win ${winnerScore}-${loserScore}` : `Tie ${winnerScore}-${loserScore}`}
         </div>
         <div style={{ display: 'flex', fontSize: font.lg }}>{finalLabel}</div>
       </div>

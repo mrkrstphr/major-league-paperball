@@ -12,9 +12,9 @@ export default function endOfGame(game: LiveGame) {
       scheduledInnings: game.liveData.linescore.scheduledInnings,
       teams: game.gameData.teams,
       totalInnings: game.liveData.linescore.currentInning,
-      winningTeam: homeScore > awayScore ? homeTeam(game) : awayTeam(game),
-      winnerScore: homeScore > awayScore ? homeScore : awayScore,
-      loserScore: homeScore > awayScore ? awayScore : homeScore,
+      winningTeam: homeScore > awayScore ? homeTeam(game) : awayScore > homeScore ? awayTeam(game) : null,
+      winnerScore: Math.max(homeScore, awayScore),
+      loserScore: Math.min(homeScore, awayScore),
     },
   };
 }

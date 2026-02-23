@@ -207,6 +207,106 @@ describe('isGameOver', () => {
     expect(isGameOver(game)).toBe(true);
   });
 
+  it('should return true in the middle of the 9th when the home team is winning', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'L',
+        },
+      },
+      liveData: {
+        linescore: {
+          currentInning: 9,
+          scheduledInnings: 9,
+          inningState: 'Middle',
+          outs: 0,
+          isTopInning: true,
+          teams: {
+            home: { runs: 5 },
+            away: { runs: 3 },
+          },
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(true);
+  });
+
+  it('should return false in the middle of the 9th when the game is tied', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'L',
+        },
+      },
+      liveData: {
+        linescore: {
+          currentInning: 9,
+          scheduledInnings: 9,
+          inningState: 'Middle',
+          outs: 0,
+          isTopInning: true,
+          teams: {
+            home: { runs: 3 },
+            away: { runs: 3 },
+          },
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(false);
+  });
+
+  it('should return true at the end of the 9th when the score is not tied', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'L',
+        },
+      },
+      liveData: {
+        linescore: {
+          currentInning: 9,
+          scheduledInnings: 9,
+          inningState: 'End',
+          outs: 0,
+          isTopInning: true,
+          teams: {
+            home: { runs: 5 },
+            away: { runs: 3 },
+          },
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(true);
+  });
+
+  it('should return false at the end of the 9th when the game is tied', () => {
+    const game = {
+      gameData: {
+        status: {
+          abstractGameCode: 'L',
+        },
+      },
+      liveData: {
+        linescore: {
+          currentInning: 9,
+          scheduledInnings: 9,
+          inningState: 'End',
+          outs: 0,
+          isTopInning: true,
+          teams: {
+            home: { runs: 3 },
+            away: { runs: 3 },
+          },
+        },
+      },
+    } as LiveGame;
+
+    expect(isGameOver(game)).toBe(false);
+  });
+
   it('should return false for any inning < scheduledInnings', () => {
     const game = {
       gameData: {

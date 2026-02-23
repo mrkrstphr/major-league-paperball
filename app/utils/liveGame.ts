@@ -38,21 +38,32 @@ export const isGameOver = (game: LiveGame) => {
     return true;
   }
 
-  // if the currentInning is >= scheduledInnings and there are 3 outs
   const currentInning = game.liveData.linescore.currentInning;
   const scheduledInnings = game.liveData.linescore.scheduledInnings;
-  const outs = game.liveData.linescore.outs;
 
   if (currentInning >= scheduledInnings) {
+    const inningState = game.liveData.linescore.inningState;
     const isTopInning = game.liveData.linescore.isTopInning;
+    const outs = game.liveData.linescore.outs;
     const homeRuns = game.liveData.linescore.teams.home.runs;
     const awayRuns = game.liveData.linescore.teams.away.runs;
 
-    // if it is top of the inning, and home team is up, game is over
+    // Between top and bottom half: home won't bat if they're already leading
+    if (inningState === 'Middle' && homeRuns > awayRuns) {
+      return true;
+    }
+
+    // After bottom half: game over if scores differ
+    if (inningState === 'End' && homeRuns !== awayRuns) {
+      return true;
+    }
+
+    // During active top half: home leads with 3 outs
     if (isTopInning && homeRuns > awayRuns && outs === 3) {
       return true;
     }
 
+    // During active bottom half: scores differ (home team already walked it off, or home leads)
     if (!isTopInning && homeRuns !== awayRuns) {
       return true;
     }
