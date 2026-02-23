@@ -27,7 +27,7 @@ const initialAutoSpeed = speedIdx !== -1 ? Number(process.argv[speedIdx + 1]) : 
 // ── File list ─────────────────────────────────────────────────────────────────
 
 let files = readdirSync(dir)
-  .filter((f) => f.endsWith('.json') && f !== 'index.json')
+  .filter((f) => f.endsWith('.json') && f !== 'index.json' && !f.startsWith('.'))
   .sort()
   .map((f) => path.join(dir, f))
   .filter((f) => statSync(f).isFile());
