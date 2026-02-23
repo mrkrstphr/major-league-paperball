@@ -16,9 +16,8 @@ export default function Banner({ children }: Props) {
         color: 'white',
         width: '100%',
         left: 0,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        padding: '16px 0',
+        top: 140,
+        padding: '16px 24px',
       }}
     >
       {children}

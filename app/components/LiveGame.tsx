@@ -6,14 +6,14 @@ import BallsAndStrikes from './partials/BallsAndStrikes';
 import Matchup from './partials/Matchup';
 import LastXPlays from './partials/LastXPlays';
 import Banner from './partials/Banner';
+import BasesAndOuts from './partials/BasesAndOuts';
 
 type Props = Record<string, any>;
 
 export default function LiveGame(props: Props) {
   const {
     inningDescription, lastPlayDescription, lineScore, count, runners,
-    matchup, last3ScoringPlays, isScoringPlay, scoringTeam, winningTeam,
-    winnerScore, loserScore,
+    matchup, last3ScoringPlays, isScoringPlay, scoringTeam, isOut, outEvent, isOnBase,
   } = props;
 
   return (
@@ -46,8 +46,29 @@ export default function LiveGame(props: Props) {
       {isScoringPlay && (
         <Banner>
           <div style={{ display: 'flex', fontSize: font['2xl'] }}>{`${scoringTeam?.name} Score!`}</div>
-          <div style={{ display: 'flex', fontSize: font.lg }}>
-            {`${winningTeam?.name} leads ${winnerScore}-${loserScore}`}
+          <div style={{ display: 'flex', fontSize: font.lg }}>{lastPlayDescription}</div>
+          <div style={{ display: 'flex', fontSize: font.lg, paddingTop: 8 }}>
+            {`${lineScore?.away?.name} ${lineScore?.away?.runs}  ·  ${lineScore?.home?.name} ${lineScore?.home?.runs}`}
+          </div>
+        </Banner>
+      )}
+
+      {!isScoringPlay && isOnBase && (
+        <Banner>
+          <div style={{ display: 'flex', fontSize: font['2xl'] }}>{outEvent?.toUpperCase()}</div>
+          <div style={{ display: 'flex', fontSize: font.lg }}>{lastPlayDescription}</div>
+          <div style={{ display: 'flex', paddingTop: 8 }}>
+            <BasesAndOuts runners={runners ?? []} outs={count?.outs ?? 0} color="white" />
+          </div>
+        </Banner>
+      )}
+
+      {!isScoringPlay && isOut && (
+        <Banner>
+          <div style={{ display: 'flex', fontSize: font['2xl'] }}>{outEvent}</div>
+          <div style={{ display: 'flex', fontSize: font.lg }}>{lastPlayDescription}</div>
+          <div style={{ display: 'flex', paddingTop: 8 }}>
+            <BasesAndOuts runners={runners ?? []} outs={count?.outs ?? 0} color="white" />
           </div>
         </Banner>
       )}

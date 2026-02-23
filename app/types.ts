@@ -168,6 +168,7 @@ export type LiveGame_LiveData_Play = {
     description: string;
     awayScore: number;
     homeScore: number;
+    isOut?: boolean;
   };
 };
 

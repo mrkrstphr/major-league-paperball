@@ -117,6 +117,13 @@ export const processGameState = async (game: LiveGame, cache: Cache) => {
     isScoringPlay: game.liveData.plays.currentPlay.about.isScoringPlay,
     scoringTeam: getOffense(game).team,
 
+    isOut: game.liveData.plays.currentPlay.result.isOut === true,
+    outEvent: game.liveData.plays.currentPlay.result.event,
+
+    isOnBase: ['Single', 'Double', 'Triple', 'Walk', 'Intent Walk', 'Hit By Pitch'].includes(
+      game.liveData.plays.currentPlay.result.event ?? ''
+    ),
+
     hasRuns:
       game.liveData.linescore.teams.away.runs > 0 ||
       game.liveData.linescore.teams.home.runs > 0,
