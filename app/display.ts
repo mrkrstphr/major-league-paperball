@@ -32,6 +32,13 @@ function getGpioBase(): number {
 
 type Version = '1' | '2' | '2B';
 
+// Silently unexport a GPIO pin if it's already exported (e.g. from a crashed run).
+function unexportPin(gpioNum: number): void {
+  try {
+    fs.writeFileSync('/sys/class/gpio/unexport', String(gpioNum));
+  } catch { /* ignore — not exported is fine */ }
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -113,6 +120,7 @@ export async function sendToDisplay(
   };
 
   const base = getGpioBase();
+  [RST_PIN, DC_PIN, CS_PIN, PWR_PIN, BUSY_PIN].forEach((p) => unexportPin(base + p));
   const rst = new Gpio(base + RST_PIN, 'out');
   const dc = new Gpio(base + DC_PIN, 'out');
   const cs = new Gpio(base + CS_PIN, 'out');
