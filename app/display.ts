@@ -20,19 +20,23 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Convert one RGBA pixel (at byte offset i*4) to a grayscale value 0–255.
+// Composites against white first so transparent pixels render as white,
+// not black (transparent pixels have RGB=0 which would otherwise threshold to black).
+function pixelToGray(pixels: Uint8Array, i: number): number {
+  const a = pixels[i * 4 + 3] / 255;
+  const r = pixels[i * 4]     * a + 255 * (1 - a);
+  const g = pixels[i * 4 + 1] * a + 255 * (1 - a);
+  const b = pixels[i * 4 + 2] * a + 255 * (1 - a);
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
 // Convert RGBA pixels to 1-bit packed buffer.
-// Composites against white before thresholding so transparent areas render as white,
-// not black (transparent pixels have RGB=0 which would otherwise appear black).
 // Result uses e-paper convention: 1 = black, 0 = white.
 function pixelsTo1bit(pixels: Uint8Array, width: number, height: number): Buffer {
   const buf = Buffer.alloc(Math.ceil((width * height) / 8), 0);
   for (let i = 0; i < width * height; i++) {
-    const a = pixels[i * 4 + 3] / 255;
-    const r = pixels[i * 4]     * a + 255 * (1 - a);
-    const g = pixels[i * 4 + 1] * a + 255 * (1 - a);
-    const b = pixels[i * 4 + 2] * a + 255 * (1 - a);
-    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-    if (gray < 128) {
+    if (pixelToGray(pixels, i) < 128) {
       buf[Math.floor(i / 8)] |= 1 << (7 - (i % 8));
     }
   }
@@ -47,18 +51,8 @@ function pixelsToV1(pixels: Uint8Array, width: number, height: number): Buffer {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x += 2) {
       const i = y * width + x;
-      const a0 = pixels[i * 4 + 3] / 255;
-      const gray0 =
-        0.299 * (pixels[i * 4]     * a0 + 255 * (1 - a0)) +
-        0.587 * (pixels[i * 4 + 1] * a0 + 255 * (1 - a0)) +
-        0.114 * (pixels[i * 4 + 2] * a0 + 255 * (1 - a0));
-      const a1 = pixels[(i + 1) * 4 + 3] / 255;
-      const gray1 =
-        0.299 * (pixels[(i + 1) * 4]     * a1 + 255 * (1 - a1)) +
-        0.587 * (pixels[(i + 1) * 4 + 1] * a1 + 255 * (1 - a1)) +
-        0.114 * (pixels[(i + 1) * 4 + 2] * a1 + 255 * (1 - a1));
-      const nibble0 = gray0 < 128 ? 0x0 : 0x3;
-      const nibble1 = gray1 < 128 ? 0x0 : 0x3;
+      const nibble0 = pixelToGray(pixels, i)     < 128 ? 0x0 : 0x3;
+      const nibble1 = pixelToGray(pixels, i + 1) < 128 ? 0x0 : 0x3;
       buf[i / 2] = (nibble0 << 4) | nibble1;
     }
   }
