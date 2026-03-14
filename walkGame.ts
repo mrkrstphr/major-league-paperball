@@ -71,7 +71,7 @@ async function render(i: number) {
   try {
     const raw = JSON.parse(readFileSync(file, 'utf8'));
     const state = await processGameState(raw, cache);
-    const png = await renderToImage(state);
+    const { png } = await renderToImage(state);
     await writeFile(OUTPUT, png);
     lastMode = state.mode;
     lastGameState = state;
