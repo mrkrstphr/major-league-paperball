@@ -59,15 +59,46 @@ function pixelsToV1(pixels: Uint8Array, width: number, height: number): Buffer {
   return buf;
 }
 
-export async function sendToDisplay(
-  pixels: Uint8Array,
-  width: number,
-  height: number,
-): Promise<void> {
-  const version = (process.env.WAVESHARE_EPD75_VERSION ?? '2') as Version;
+// ---------------------------------------------------------------------------
+// Hardware context — initialized once, kept alive for the process lifetime.
+// Opening and closing GPIO lines on every display call causes native-module
+// use-after-free crashes (the Chip object gets GC'd while Lines still hold
+// internal pointers into it).
+// ---------------------------------------------------------------------------
 
-  // Dynamic requires — these native modules only exist on Raspberry Pi.
-  // On dev machines, sendToDisplay is never called (WITHOUT_PAPER=true).
+type SpiDevice = {
+  transfer: (
+    msg: Array<{ sendBuffer: Buffer; byteLength: number; speedHz: number }>,
+    cb: (err: Error | null) => void,
+  ) => void;
+  close: (cb: (err: Error | null) => void) => void;
+};
+
+type GpioLine = {
+  getValue: () => 0 | 1;
+  setValue: (val: 0 | 1) => void;
+  requestInputMode: () => void;
+  requestOutputMode: () => void;
+  release: () => void;
+};
+
+type HW = {
+  device: SpiDevice;
+  rst: GpioLine;
+  dc: GpioLine;
+  pwr: GpioLine;
+  busy: GpioLine;
+};
+
+// Cached promise so concurrent callers all wait on the same initialization.
+let hwPromise: Promise<HW> | undefined;
+
+async function getHardware(): Promise<HW> {
+  if (!hwPromise) hwPromise = openHardware();
+  return hwPromise;
+}
+
+async function openHardware(): Promise<HW> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const spiLib = require('spi-device') as {
     open: (
@@ -75,27 +106,15 @@ export async function sendToDisplay(
       device: number,
       options: Record<string, unknown>,
       cb: (err: Error | null) => void,
-    ) => {
-      transfer: (
-        msg: Array<{ sendBuffer: Buffer; byteLength: number; speedHz: number }>,
-        cb: (err: Error | null) => void,
-      ) => void;
-      close: (cb: (err: Error | null) => void) => void;
-    };
+    ) => SpiDevice;
   };
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Chip, Line } = require('node-libgpiod') as {
     Chip: new (index: number) => { label: string };
-    Line: new (chip: { label: string }, offset: number) => {
-      getValue: () => 0 | 1;
-      setValue: (val: 0 | 1) => void;
-      requestInputMode: () => void;
-      requestOutputMode: () => void;
-      release: () => void;
-    };
+    Line: new (chip: { label: string }, offset: number) => GpioLine;
   };
 
-  // Find the BCM GPIO chip by label. Line offsets = BCM pin numbers, no offset math needed.
+  // Find the BCM GPIO chip by label. Line offsets = BCM pin numbers.
   let chip: { label: string } | undefined;
   for (let i = 0; i < 8; i++) {
     try {
@@ -115,14 +134,23 @@ export async function sendToDisplay(
   pwr.requestOutputMode();
   busy.requestInputMode();
 
-  const device = await new Promise<ReturnType<typeof spiLib.open>>(
-    (resolve, reject) => {
-      const d = spiLib.open(SPI_BUS, SPI_DEVICE, { maxSpeedHz: SPI_SPEED, mode: 0 }, (err) => {
-        if (err) reject(err);
-        else resolve(d);
-      });
-    },
-  );
+  const device = await new Promise<SpiDevice>((resolve, reject) => {
+    const d = spiLib.open(SPI_BUS, SPI_DEVICE, { maxSpeedHz: SPI_SPEED, mode: 0 }, (err) => {
+      if (err) reject(err);
+      else resolve(d);
+    });
+  });
+
+  return { device, rst, dc, pwr, busy };
+}
+
+export async function sendToDisplay(
+  pixels: Uint8Array,
+  width: number,
+  height: number,
+): Promise<void> {
+  const version = (process.env.WAVESHARE_EPD75_VERSION ?? '2') as Version;
+  const { device, rst, dc, pwr, busy } = await getHardware();
 
   const spiWrite = async (buf: Buffer): Promise<void> => {
     for (let offset = 0; offset < buf.length; offset += CHUNK_SIZE) {
@@ -182,19 +210,7 @@ export async function sendToDisplay(
     await delay(holdMs);
   };
 
-  const cleanup = async (): Promise<void> => {
-    rst.setValue(0);
-    dc.setValue(0);
-    pwr.setValue(0);
-    await new Promise<void>((resolve) => device.close(() => resolve()));
-    rst.release();
-    dc.release();
-    pwr.release();
-    busy.release();
-  };
-
-  try {
-    pwr.setValue(1);
+  pwr.setValue(1);
 
     if (version === '1') {
       // V1: epd7in5 — 640×384, 4bpp packed format
@@ -278,13 +294,10 @@ export async function sendToDisplay(
       await readBusy();
     }
 
-    // Sleep — same for all versions
-    await sendCommand(0x02); // POWER_OFF
-    await readBusy();
-    await sendCommand(0x07); // DEEP_SLEEP
-    await sendByte(0xA5);
-    await delay(2000);
-  } finally {
-    await cleanup();
-  }
+  // Sleep — same for all versions
+  await sendCommand(0x02); // POWER_OFF
+  await readBusy();
+  await sendCommand(0x07); // DEEP_SLEEP
+  await sendByte(0xA5);
+  await delay(2000);
 }
