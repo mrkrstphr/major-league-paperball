@@ -130,20 +130,16 @@ export async function sendToDisplay(
     },
   );
 
-  const spiWrite = (buf: Buffer): Promise<void> => {
-    const chunks: Promise<void>[] = [];
+  const spiWrite = async (buf: Buffer): Promise<void> => {
     for (let offset = 0; offset < buf.length; offset += CHUNK_SIZE) {
       const chunk = buf.subarray(offset, offset + CHUNK_SIZE);
-      chunks.push(
-        new Promise<void>((resolve, reject) => {
-          device.transfer(
-            [{ sendBuffer: chunk, byteLength: chunk.length, speedHz: SPI_SPEED }],
-            (err) => { if (err) reject(err); else resolve(); },
-          );
-        }),
-      );
+      await new Promise<void>((resolve, reject) => {
+        device.transfer(
+          [{ sendBuffer: chunk, byteLength: chunk.length, speedHz: SPI_SPEED }],
+          (err) => { if (err) reject(err); else resolve(); },
+        );
+      });
     }
-    return chunks.reduce((p, next) => p.then(() => next), Promise.resolve());
   };
 
   // DC=0 → command, DC=1 → data. CS is managed by the SPI kernel driver.
