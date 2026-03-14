@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import { consoleDebug } from './utils/env';
 
 const SPI_BUS = 0;
@@ -11,6 +12,23 @@ const DC_PIN = 25;
 const CS_PIN = 8;
 const BUSY_PIN = 24;
 const PWR_PIN = 18;
+
+// On Bookworm (kernel 6.6+), the BCM GPIO chip base is no longer 0.
+// Detect it from sysfs so pin numbers are correct regardless of kernel version.
+function getGpioBase(): number {
+  try {
+    for (const entry of fs.readdirSync('/sys/class/gpio')) {
+      if (!entry.startsWith('gpiochip')) continue;
+      try {
+        const label = fs.readFileSync(`/sys/class/gpio/${entry}/label`, 'utf8').trim();
+        if (/^pinctrl-bcm/i.test(label)) {
+          return parseInt(fs.readFileSync(`/sys/class/gpio/${entry}/base`, 'utf8').trim(), 10);
+        }
+      } catch { /* skip unreadable entries */ }
+    }
+  } catch { /* sysfs unavailable */ }
+  return 0;
+}
 
 type Version = '1' | '2' | '2B';
 
@@ -94,11 +112,12 @@ export async function sendToDisplay(
     };
   };
 
-  const rst = new Gpio(RST_PIN, 'out');
-  const dc = new Gpio(DC_PIN, 'out');
-  const cs = new Gpio(CS_PIN, 'out');
-  const pwr = new Gpio(PWR_PIN, 'out');
-  const busy = new Gpio(BUSY_PIN, 'in');
+  const base = getGpioBase();
+  const rst = new Gpio(base + RST_PIN, 'out');
+  const dc = new Gpio(base + DC_PIN, 'out');
+  const cs = new Gpio(base + CS_PIN, 'out');
+  const pwr = new Gpio(base + PWR_PIN, 'out');
+  const busy = new Gpio(base + BUSY_PIN, 'in');
 
   const device = await new Promise<ReturnType<typeof spiLib.open>>(
     (resolve, reject) => {
