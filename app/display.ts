@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import { consoleDebug } from './utils/env';
 
 const SPI_BUS = 0;
@@ -7,37 +6,15 @@ const SPI_SPEED = 4000000;
 // Linux spidev default transfer size limit; chunk large buffers to stay under it
 const CHUNK_SIZE = 4096;
 
-const RST_PIN = 17;
-const DC_PIN = 25;
-const CS_PIN = 8;
+// GPIO line offsets within the BCM chip (= BCM pin numbers).
+// NOTE: CS (GPIO 8) is owned by the SPI kernel driver as "spi0 CS0" on Bookworm.
+//       spi-device manages chip-select automatically — do NOT claim it via GPIO.
+const RST_PIN  = 17;
+const DC_PIN   = 25;
 const BUSY_PIN = 24;
-const PWR_PIN = 18;
-
-// On Bookworm (kernel 6.6+), the BCM GPIO chip base is no longer 0.
-// Detect it from sysfs so pin numbers are correct regardless of kernel version.
-function getGpioBase(): number {
-  try {
-    for (const entry of fs.readdirSync('/sys/class/gpio')) {
-      if (!entry.startsWith('gpiochip')) continue;
-      try {
-        const label = fs.readFileSync(`/sys/class/gpio/${entry}/label`, 'utf8').trim();
-        if (/^pinctrl-bcm/i.test(label)) {
-          return parseInt(fs.readFileSync(`/sys/class/gpio/${entry}/base`, 'utf8').trim(), 10);
-        }
-      } catch { /* skip unreadable entries */ }
-    }
-  } catch { /* sysfs unavailable */ }
-  return 0;
-}
+const PWR_PIN  = 18;
 
 type Version = '1' | '2' | '2B';
-
-// Silently unexport a GPIO pin if it's already exported (e.g. from a crashed run).
-function unexportPin(gpioNum: number): void {
-  try {
-    fs.writeFileSync('/sys/class/gpio/unexport', String(gpioNum));
-  } catch { /* ignore — not exported is fine */ }
-}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -108,24 +85,36 @@ export async function sendToDisplay(
     };
   };
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Gpio } = require('onoff') as {
-    Gpio: new (
-      pin: number,
-      dir: 'in' | 'out',
-    ) => {
-      readSync: () => 0 | 1;
-      writeSync: (val: 0 | 1) => void;
-      unexport: () => void;
+  const { Chip, Line } = require('node-libgpiod') as {
+    Chip: new (index: number) => { label: string };
+    Line: new (chip: { label: string }, offset: number) => {
+      getValue: () => 0 | 1;
+      setValue: (val: 0 | 1) => void;
+      requestInputMode: () => void;
+      requestOutputMode: () => void;
+      release: () => void;
     };
   };
 
-  const base = getGpioBase();
-  [RST_PIN, DC_PIN, CS_PIN, PWR_PIN, BUSY_PIN].forEach((p) => unexportPin(base + p));
-  const rst = new Gpio(base + RST_PIN, 'out');
-  const dc = new Gpio(base + DC_PIN, 'out');
-  const cs = new Gpio(base + CS_PIN, 'out');
-  const pwr = new Gpio(base + PWR_PIN, 'out');
-  const busy = new Gpio(base + BUSY_PIN, 'in');
+  // Find the BCM GPIO chip by label. Line offsets = BCM pin numbers, no offset math needed.
+  let chip: { label: string } | undefined;
+  for (let i = 0; i < 8; i++) {
+    try {
+      const c = new Chip(i);
+      if (/pinctrl-bcm/i.test(c.label)) { chip = c; break; }
+    } catch { break; }
+  }
+  if (!chip) throw new Error('BCM GPIO chip not found');
+
+  const rst  = new Line(chip, RST_PIN);
+  const dc   = new Line(chip, DC_PIN);
+  const pwr  = new Line(chip, PWR_PIN);
+  const busy = new Line(chip, BUSY_PIN);
+
+  rst.requestOutputMode();
+  dc.requestOutputMode();
+  pwr.requestOutputMode();
+  busy.requestInputMode();
 
   const device = await new Promise<ReturnType<typeof spiLib.open>>(
     (resolve, reject) => {
@@ -152,31 +141,26 @@ export async function sendToDisplay(
     return chunks.reduce((p, next) => p.then(() => next), Promise.resolve());
   };
 
+  // DC=0 → command, DC=1 → data. CS is managed by the SPI kernel driver.
   const sendCommand = async (cmd: number): Promise<void> => {
-    dc.writeSync(0);
-    cs.writeSync(0);
+    dc.setValue(0);
     await spiWrite(Buffer.from([cmd]));
-    cs.writeSync(1);
   };
 
   const sendByte = async (data: number): Promise<void> => {
-    dc.writeSync(1);
-    cs.writeSync(0);
+    dc.setValue(1);
     await spiWrite(Buffer.from([data]));
-    cs.writeSync(1);
   };
 
   const sendBuffer = async (buf: Buffer): Promise<void> => {
-    dc.writeSync(1);
-    cs.writeSync(0);
+    dc.setValue(1);
     await spiWrite(buf);
-    cs.writeSync(1);
   };
 
   const readBusy = async (): Promise<void> => {
     consoleDebug('e-Paper busy');
     if (version === '1') {
-      while (busy.readSync() === 0) {
+      while (busy.getValue() === 0) {
         await delay(100);
       }
     } else {
@@ -184,7 +168,7 @@ export async function sendToDisplay(
       await sendCommand(0x71);
       let iter = 0;
       const maxIter = version === '2' ? 100 : Infinity;
-      while (busy.readSync() === 0 && iter < maxIter) {
+      while (busy.getValue() === 0 && iter < maxIter) {
         await sendCommand(0x71);
         await delay(20);
         iter++;
@@ -195,28 +179,27 @@ export async function sendToDisplay(
   };
 
   const reset = async (holdMs: number, lowMs: number): Promise<void> => {
-    rst.writeSync(1);
+    rst.setValue(1);
     await delay(holdMs);
-    rst.writeSync(0);
+    rst.setValue(0);
     await delay(lowMs);
-    rst.writeSync(1);
+    rst.setValue(1);
     await delay(holdMs);
   };
 
   const cleanup = async (): Promise<void> => {
-    rst.writeSync(0);
-    dc.writeSync(0);
-    pwr.writeSync(0);
+    rst.setValue(0);
+    dc.setValue(0);
+    pwr.setValue(0);
     await new Promise<void>((resolve) => device.close(() => resolve()));
-    rst.unexport();
-    dc.unexport();
-    cs.unexport();
-    pwr.unexport();
-    busy.unexport();
+    rst.release();
+    dc.release();
+    pwr.release();
+    busy.release();
   };
 
   try {
-    pwr.writeSync(1);
+    pwr.setValue(1);
 
     if (version === '1') {
       // V1: epd7in5 — 640×384, 4bpp packed format
