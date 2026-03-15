@@ -2,13 +2,13 @@
 
 ![preview](preview.jpg)
 
-major-league-paperball is an app that allows you to follow your favorite Major League Baseball (MLB) team, including live game updates, on a Waveshare 7.5" e-ink screen. It assumes you're running the app on a Raspberry Pi, but any device capable of running both Node and Python should work.
+major-league-paperball is an app that allows you to follow your favorite Major League Baseball (MLB) team, including live game updates, on a Waveshare 7.5" e-ink screen. It assumes you're running the app on a Raspberry Pi, but any device capable of running Node should work.
 
-The app works by running a Node app that uses the [MLB Stats](https://statsapi.mlb.com/docs) to fetch information about a specific team, renders the display image directly using [Satori](https://github.com/vercel/satori) and [resvg-js](https://github.com/yisibl/resvg-js), and finally uses a small Python script to draw the image to the e-ink screen.
+The app works by running a Node app that uses the [MLB Stats](https://statsapi.mlb.com/docs) to fetch information about a specific team, renders the display image directly using [Satori](https://github.com/vercel/satori) and [resvg-js](https://github.com/yisibl/resvg-js), and drives the e-ink screen directly over SPI using [spi-device](https://github.com/fivdi/spi-device) and [node-libgpiod](https://github.com/sombriks/node-libgpiod) — no Python required.
 
 ## Shopping List
 
-In order to run this app, I suggest buying the 7.5" Waveshare e-ink screen with Raspberry Pi HAT, as well as any Raspberry Pi capable of running Node, Python, and connecting to the internet.
+In order to run this app, I suggest buying the 7.5" Waveshare e-ink screen with Raspberry Pi HAT, as well as any Raspberry Pi capable of running Node and connecting to the internet.
 
 1.  [Waveshare 7.5" e-ink screen](https://www.waveshare.com/7.5inch-e-paper-hat.htm) [[Amazon US](https://www.amazon.com/dp/B075R4QY3L)]
 2.  Either: [Raspberry Pi Zero W](https://www.raspberrypi.com/products/raspberry-pi-zero-w/)
@@ -16,7 +16,7 @@ In order to run this app, I suggest buying the 7.5" Waveshare e-ink screen with 
 
 ## Setup
 
-TL;DR: Setup your Pi, install NodeJS and Python3. Clone the repo, copy `.env.example` to `.env`, adjust the values within, and then keep the app running with pm2.
+TL;DR: Setup your Pi, install NodeJS, and install `libgpiod-dev`. Clone the repo, copy `.env.example` to `.env`, adjust the values within, and then keep the app running with pm2.
 
 ### Setup Your Raspberry Pi
 
@@ -40,38 +40,22 @@ npm -v
 
 Make sure both `node` and `npm` report a version to ensure they installed.
 
-### Setup Python
+### Setup System Dependencies
 
-Ensure python3 is installed:
-
-```
-python3 --version
-```
-
-If it's not:
+Install `libgpiod-dev` (required by the e-ink display driver) and `git`:
 
 ```
-sudo apt install python3
-```
-
-### Setup Misc Dependencies
-
-You'll want `git` to clone this repository. Alternately, you can download the source code from GitHub and unpack it on your Pi.
-
-```
-sudo apt install -y git
+sudo apt install -y libgpiod-dev git
 ```
 
 ### Running the App
 
-Clone the repository, setup a python virtual environment, and install node and python dependencies:
+Clone the repository and install dependencies:
 
 ```
 git clone https://github.com/mrkrstphr/major-league-paperball.git
 cd major-league-paperball
 npm install
-python3 -m venv --system-site-packages .venv
-.venv/bin/pip3 install -r requirements.txt
 ```
 
 Copy the example environment file. Edit the file and follow the directions in it for setting a handful of variables:
@@ -80,7 +64,7 @@ Copy the example environment file. Edit the file and follow the directions in it
 cp .env.example .env
 ```
 
-Now you should be all set to run the app. Since the app is a NodeJS app (that calls a python script to update the screen), you can use any method of running a NodeJS app. I suggest using PM2, which is a process manager that will keep the app running across crashes (sorry) and reboots.
+Now you should be all set to run the app. Since the app is a pure Node app, you can use any method of running a NodeJS app. I suggest using PM2, which is a process manager that will keep the app running across crashes (sorry) and reboots.
 
 ```
 npm install -g pm2
@@ -95,13 +79,13 @@ If it doesn't appear to be working, you can run `pm2 status` to verify that its 
 
 ## How it Works
 
-The app is primarily a Node app that periodically fetches information from the MLB Stats API. I chose Node because I know JavaScript best, and being a busy dad with a full time job and part time laziness. Honestly, I should just learn how to make a Python web-app and have it be an all Python app.
+The app is a Node app that periodically fetches information from the MLB Stats API. I chose Node because I know JavaScript best, and being a busy dad with a full time job and part time laziness.
 
 The code aims to be a good steward of the MLB Stats API as well as the e-ink screen, which means it both fetches data as little as possible and tries not to unnecessarily write to the screen (because of the ugly flicker when updating the screen).
 
 When no game is active, the screen fetches data, by default, every 20 minutes. When a game is active, it's every 20 seconds. If the data fetched is the same as last time, it doesn't bother refreshing the screen.
 
-If there is new data, the app renders a PNG directly in-process using [Satori](https://github.com/vercel/satori) (JSX → SVG) and [resvg-js](https://github.com/yisibl/resvg-js) (SVG → PNG) — no headless browser required. It then uses a Python script (since the native code provided by Waveshare is either Python or C) to send the image to the screen.
+If there is new data, the app renders a PNG directly in-process using [Satori](https://github.com/vercel/satori) (JSX → SVG) and [resvg-js](https://github.com/yisibl/resvg-js) (SVG → PNG) — no headless browser required. It then drives the e-ink display directly over SPI/GPIO using [spi-device](https://github.com/fivdi/spi-device) and [node-libgpiod](https://github.com/sombriks/node-libgpiod), with a built-in driver for all three variants of the Waveshare 7.5" display (V1, V2, V2B).
 
 ### States
 
