@@ -1,6 +1,6 @@
 import { consoleDebug } from '../utils/env';
 import {
-  getHardware, makeSpiWrite,
+  getHardware, resetHardware, makeSpiWrite,
   DC_PIN, RST_PIN, BUSY_PIN, PWR_PIN,
   type Io,
 } from './hardware';
@@ -60,12 +60,18 @@ export async function sendToDisplay(
     consoleDebug(`Sending to display (EPD v${version})`);
     pwr.setValue(1);
     await VERSIONS[version].run(io, pixels, width, height);
+  } catch (err: any) {
+    if (err?.errno === 1 || err?.code === 'EPERM') {
+      consoleDebug('EPERM on GPIO — resetting hardware singleton for next tick');
+      resetHardware();
+    }
+    throw err;
   } finally {
-    rst.release();
-    dc.release();
-    busy.release();
-    pwr.setValue(0);
-    pwr.release();
+    try { rst.release(); } catch { /* already released or invalid */ }
+    try { dc.release(); } catch { /* already released or invalid */ }
+    try { busy.release(); } catch { /* already released or invalid */ }
+    try { pwr.setValue(0); } catch { /* ignore — display may have self-powered off */ }
+    try { pwr.release(); } catch { /* already released or invalid */ }
     displayRunning = false;
   }
 }

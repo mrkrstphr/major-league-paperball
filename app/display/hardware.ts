@@ -72,6 +72,10 @@ export function getHardware(): Promise<HW> {
   return hwPromise;
 }
 
+export function resetHardware(): void {
+  hwPromise = undefined;
+}
+
 async function openHardware(): Promise<HW> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const spiLib = require('spi-device') as HW['spiLib'];
