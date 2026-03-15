@@ -102,6 +102,10 @@ export const processGameState = async (game: LiveGame, cache: Cache) => {
 
     // opponentName: // TODO: get opponent name
 
+    awayTeam: game.gameData.teams.away.teamName,
+    homeTeam: game.gameData.teams.home.teamName,
+    weather: game.gameData.weather,
+
     inningNumber: game.liveData.linescore.currentInning,
     inningDescription: `${game.liveData.linescore.inningState} ${game.liveData.linescore.currentInningOrdinal}`,
     lastPlayDescription: lastPlayWithDescription(game)?.result?.description,

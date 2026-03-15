@@ -7,6 +7,7 @@ import Matchup from './partials/Matchup';
 import LastXPlays from './partials/LastXPlays';
 import Banner from './partials/Banner';
 import BasesAndOuts from './partials/BasesAndOuts';
+import GameHeader from './partials/GameHeader';
 
 type Props = Record<string, any>;
 
@@ -14,14 +15,18 @@ export default function LiveGame(props: Props) {
   const {
     inningDescription, lastPlayDescription, lineScore, count, runners,
     matchup, last3ScoringPlays, isScoringPlay, scoringTeam, isOut, outEvent, isOnBase,
+    awayTeam, homeTeam, weather,
   } = props;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', fontSize: font['2xl'], position: 'relative' }}>
       <div style={{ display: 'flex', flexDirection: 'column', padding: SCREEN_PADDING }}>
-        <div style={{ display: 'flex', marginBottom: 16, fontSize: font.lg, paddingBottom: 8 }}>
-          {inningDescription}
-        </div>
+        <GameHeader
+          inningDescription={inningDescription}
+          awayTeam={awayTeam}
+          homeTeam={homeTeam}
+          weather={weather}
+        />
 
         <div style={{ display: 'flex', flexDirection: 'row', gap: 32, alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: 448 }}>

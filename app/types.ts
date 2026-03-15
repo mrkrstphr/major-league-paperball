@@ -41,6 +41,7 @@ export type LiveGame_Data_Team = {
   id: number;
   abbreviation: string;
   name: string;
+  teamName: string;
 };
 
 export type LiveGame_GameData = {
