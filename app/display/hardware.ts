@@ -86,7 +86,7 @@ async function openHardware(): Promise<HW> {
     try {
       const c = new Chip(i);
       if (/pinctrl-bcm/i.test(c.label)) { chip = c; break; }
-    } catch { break; }
+    } catch { continue; }
   }
   if (!chip) throw new Error('BCM GPIO chip not found');
 
