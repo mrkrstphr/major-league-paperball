@@ -40,7 +40,7 @@ const cache = {
 
   console.log(`Rendering mode: ${state.mode}`);
 
-  const png = await renderToImage(state);
+  const { png } = await renderToImage(state);
   await writeFile(outputFile, png);
 
   console.log(`Wrote ${outputFile} (${png.length} bytes)`);
