@@ -12,7 +12,7 @@ async function readBusy(io: Io): Promise<void> {
   await io.sendCommand(0x71);
   let iter = 0;
   while (io.busy.getValue() === 0) {
-    if (iter++ >= 100) throw new Error('readBusy timeout on EPD v2');
+    if (iter++ >= 500) throw new Error('readBusy timeout on EPD v2');
     await io.sendCommand(0x71);
     await delay(20);
   }
