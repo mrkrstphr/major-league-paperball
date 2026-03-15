@@ -12,11 +12,20 @@ type Version = '1' | '2' | '2B';
 
 const VERSIONS: Record<Version, typeof v2> = { '1': v1, '2': v2, '2B': v2b };
 
+// Prevents concurrent display calls from racing on the GPIO lines.
+let displayRunning = false;
+
 export async function sendToDisplay(
   pixels: Uint8Array,
   width: number,
   height: number,
 ): Promise<void> {
+  if (displayRunning) {
+    consoleDebug('sendToDisplay already running, skipping tick');
+    return;
+  }
+  displayRunning = true;
+
   const version = (process.env.WAVESHARE_EPD75_VERSION ?? '2') as Version;
   const { LineConstructor: Line, chip, device } = await getHardware();
 
@@ -42,12 +51,15 @@ export async function sendToDisplay(
     rst,
   };
 
-  consoleDebug(`Sending to display (EPD v${version})`);
-  pwr.setValue(1);
-  await VERSIONS[version].run(io, pixels, width, height);
-
-  rst.release();
-  dc.release();
-  pwr.release();
-  busy.release();
+  try {
+    consoleDebug(`Sending to display (EPD v${version})`);
+    pwr.setValue(1);
+    await VERSIONS[version].run(io, pixels, width, height);
+  } finally {
+    rst.release();
+    dc.release();
+    pwr.release();
+    busy.release();
+    displayRunning = false;
+  }
 }

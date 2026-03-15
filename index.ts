@@ -41,7 +41,7 @@ async function runTick() {
 (async () => {
   console.log('⚾ major-league-paperball starting');
 
-  runTick();
+  await runTick();
 
   CronJob.from({
     cronTime: '*/20 * * * * *',
