@@ -4,7 +4,7 @@ import StandingsTable from './partials/StandingsTable';
 
 type Props = Record<string, any>;
 
-export default function Standings({ standings, previousGame, nextGame }: Props) {
+export default function Standings({ standings, previousGame, nextGame, myTeamId }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', padding: SCREEN_PADDING }}>
       <div style={{ display: 'flex', flexDirection: 'row', marginBottom: 16 }}>
@@ -28,7 +28,7 @@ export default function Standings({ standings, previousGame, nextGame }: Props) 
         Division Standings
       </div>
 
-      {standings && <StandingsTable teams={standings} />}
+      {standings && <StandingsTable teams={standings} myTeamId={myTeamId} />}
     </div>
   );
 }

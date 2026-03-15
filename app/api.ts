@@ -65,3 +65,11 @@ export async function getStandingsForLeague(leagueId: number) {
 
   return data.records;
 }
+
+export async function getSpringStandingsForLeague(leagueId: number) {
+  const { data } = await axios.get<Standings>(
+    `${baseUrl}/v1/standings?leagueId=${leagueId}&standingsTypes=springTraining`
+  );
+
+  return data.records;
+}

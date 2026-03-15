@@ -16,6 +16,7 @@ export type Schedule_Game_Team = {
 export type Schedule_Game = {
   gamePk: number;
   gameDate: string;
+  gameType: string;
   rescheduleDate?: string;
   status: {
     // TODO: enum here L,
