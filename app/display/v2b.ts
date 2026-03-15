@@ -10,8 +10,11 @@ async function reset(io: Io): Promise<void> {
 
 async function readBusy(io: Io): Promise<void> {
   await io.sendCommand(0x71);
-  while (io.busy.getValue() === 0) {
+  let iter = 0;
+  while (io.busy.getValue() === 0 && iter < 100) {
     await io.sendCommand(0x71);
+    await delay(20);
+    iter++;
   }
   await delay(200);
 }

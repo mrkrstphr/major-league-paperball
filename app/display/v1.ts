@@ -9,7 +9,11 @@ async function reset(io: Io): Promise<void> {
 }
 
 async function readBusy(io: Io): Promise<void> {
-  while (io.busy.getValue() === 0) await delay(100);
+  let iter = 0;
+  while (io.busy.getValue() === 0) {
+    if (iter++ > 50) throw new Error('readBusy timeout on EPD v1');
+    await delay(100);
+  }
 }
 
 export async function run(

@@ -26,7 +26,12 @@ export async function sendToDisplay(
   }
   displayRunning = true;
 
-  const version = (process.env.WAVESHARE_EPD75_VERSION ?? '2') as Version;
+  const versionStr = process.env.WAVESHARE_EPD75_VERSION ?? '2';
+  if (!(versionStr in VERSIONS)) {
+    displayRunning = false;
+    throw new Error(`Invalid WAVESHARE_EPD75_VERSION: "${versionStr}". Supported: ${Object.keys(VERSIONS).join(', ')}`);
+  }
+  const version = versionStr as Version;
   const { LineConstructor: Line, chip, device } = await getHardware();
 
   // Lines are re-requested each call — libgpiod invalidates the request after
