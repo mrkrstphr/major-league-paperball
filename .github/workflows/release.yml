@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags: 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 'lts/*'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Package
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          DIRNAME="paperball-${VERSION}"
+          mv dist "${DIRNAME}"
+          tar -czf "${DIRNAME}.tar.gz" "${DIRNAME}/"
+          echo "TARBALL=${DIRNAME}.tar.gz" >> $GITHUB_ENV
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2.5.3
+        with:
+          files: ${{ env.TARBALL }}
+          generate_release_notes: true
