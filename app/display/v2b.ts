@@ -11,10 +11,10 @@ async function reset(io: Io): Promise<void> {
 async function readBusy(io: Io): Promise<void> {
   await io.sendCommand(0x71);
   let iter = 0;
-  while (io.busy.getValue() === 0 && iter < 100) {
+  while (io.busy.getValue() === 0) {
+    if (iter++ >= 100) throw new Error('readBusy timeout on EPD v2B');
     await io.sendCommand(0x71);
     await delay(20);
-    iter++;
   }
   await delay(200);
 }

@@ -63,8 +63,9 @@ export async function sendToDisplay(
   } finally {
     rst.release();
     dc.release();
-    pwr.release();
     busy.release();
+    pwr.setValue(0);
+    pwr.release();
     displayRunning = false;
   }
 }
