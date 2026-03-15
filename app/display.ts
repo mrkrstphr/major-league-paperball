@@ -82,15 +82,26 @@ type GpioLine = {
   release: () => void;
 };
 
+type GpioChip = { label: string };
+
 type HW = {
+  spiLib: {
+    open: (
+      bus: number,
+      device: number,
+      options: Record<string, unknown>,
+      cb: (err: Error | null) => void,
+    ) => SpiDevice;
+  };
+  LineConstructor: new (chip: GpioChip, offset: number) => GpioLine;
+  chip: GpioChip;
   device: SpiDevice;
-  rst: GpioLine;
-  dc: GpioLine;
-  pwr: GpioLine;
-  busy: GpioLine;
 };
 
-// Cached promise so concurrent callers all wait on the same initialization.
+// The Chip object must stay alive for the process lifetime — Line objects hold
+// raw C pointers into it and will segfault if the Chip is GC'd. Lines themselves
+// are re-requested on every call because libgpiod invalidates the request after
+// the display's power-cycle sequence, causing EPERM on subsequent setValue calls.
 let hwPromise: Promise<HW> | undefined;
 
 async function getHardware(): Promise<HW> {
@@ -100,22 +111,14 @@ async function getHardware(): Promise<HW> {
 
 async function openHardware(): Promise<HW> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const spiLib = require('spi-device') as {
-    open: (
-      bus: number,
-      device: number,
-      options: Record<string, unknown>,
-      cb: (err: Error | null) => void,
-    ) => SpiDevice;
-  };
+  const spiLib = require('spi-device') as HW['spiLib'];
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Chip, Line } = require('node-libgpiod') as {
-    Chip: new (index: number) => { label: string };
-    Line: new (chip: { label: string }, offset: number) => GpioLine;
+    Chip: new (index: number) => GpioChip;
+    Line: new (chip: GpioChip, offset: number) => GpioLine;
   };
 
-  // Find the BCM GPIO chip by label. Line offsets = BCM pin numbers.
-  let chip: { label: string } | undefined;
+  let chip: GpioChip | undefined;
   for (let i = 0; i < 8; i++) {
     try {
       const c = new Chip(i);
@@ -124,16 +127,6 @@ async function openHardware(): Promise<HW> {
   }
   if (!chip) throw new Error('BCM GPIO chip not found');
 
-  const rst  = new Line(chip, RST_PIN);
-  const dc   = new Line(chip, DC_PIN);
-  const pwr  = new Line(chip, PWR_PIN);
-  const busy = new Line(chip, BUSY_PIN);
-
-  rst.requestOutputMode();
-  dc.requestOutputMode();
-  pwr.requestOutputMode();
-  busy.requestInputMode();
-
   const device = await new Promise<SpiDevice>((resolve, reject) => {
     const d = spiLib.open(SPI_BUS, SPI_DEVICE, { maxSpeedHz: SPI_SPEED, mode: 0 }, (err) => {
       if (err) reject(err);
@@ -141,7 +134,7 @@ async function openHardware(): Promise<HW> {
     });
   });
 
-  return { device, rst, dc, pwr, busy };
+  return { spiLib, LineConstructor: Line, chip, device };
 }
 
 export async function sendToDisplay(
@@ -150,7 +143,18 @@ export async function sendToDisplay(
   height: number,
 ): Promise<void> {
   const version = (process.env.WAVESHARE_EPD75_VERSION ?? '2') as Version;
-  const { device, rst, dc, pwr, busy } = await getHardware();
+  const { LineConstructor: Line, chip, device } = await getHardware();
+
+  // Lines are re-requested each call — libgpiod invalidates the request after
+  // the display's power-cycle, causing EPERM if we try to reuse them.
+  const rst  = new Line(chip, RST_PIN);
+  const dc   = new Line(chip, DC_PIN);
+  const pwr  = new Line(chip, PWR_PIN);
+  const busy = new Line(chip, BUSY_PIN);
+  rst.requestOutputMode();
+  dc.requestOutputMode();
+  pwr.requestOutputMode();
+  busy.requestInputMode();
 
   const spiWrite = async (buf: Buffer): Promise<void> => {
     for (let offset = 0; offset < buf.length; offset += CHUNK_SIZE) {
@@ -300,4 +304,9 @@ export async function sendToDisplay(
   await sendCommand(0x07); // DEEP_SLEEP
   await sendByte(0xA5);
   await delay(2000);
+
+  rst.release();
+  dc.release();
+  pwr.release();
+  busy.release();
 }
