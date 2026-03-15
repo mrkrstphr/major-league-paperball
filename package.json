@@ -23,6 +23,10 @@
     "react-dom": "^19.2.4",
     "satori": "^0.19.2"
   },
+  "optionalDependencies": {
+    "node-libgpiod": "^0.6.0",
+    "spi-device": "^3.1.2"
+  },
   "devDependencies": {
     "@storybook/addon-essentials": "^8.6.14",
     "@storybook/addon-interactions": "^8.6.14",

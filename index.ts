@@ -1,10 +1,10 @@
-import { spawn } from 'child_process';
 import { CronJob } from 'cron';
 import 'dotenv/config';
 import fs from 'fs';
 import { equals } from 'ramda';
 import getNextState from './app/engine/index';
 import { renderToImage } from './app/render';
+import { sendToDisplay } from './app/display/index';
 import { getState, setState } from './app/state';
 import {
   consoleDebug,
@@ -12,19 +12,6 @@ import {
 } from './app/utils/env';
 
 const fileName = 'screenshot.png';
-
-const publishScreenshot = async () => {
-  const pythonProcess = spawn('.venv/bin/python3', [
-    'display.py',
-    'screenshot.png',
-  ]);
-
-  return new Promise((resolve) => {
-    pythonProcess.on('exit', (code) => {
-      resolve(code);
-    });
-  });
-};
 
 async function runTick() {
   const currentState = getState();
@@ -39,22 +26,22 @@ async function runTick() {
 
     setState(nextState);
 
-    const png = await renderToImage(nextState);
+    const { png, pixels, width, height } = await renderToImage(nextState);
     await fs.promises.writeFile(fileName, png);
 
     if (withoutPaper()) {
-      consoleDebug('Skipping publishScreenshot, WITHOUT_PAPER');
+      consoleDebug('Skipping sendToDisplay, WITHOUT_PAPER');
       return;
     }
 
-    await publishScreenshot();
+    await sendToDisplay(pixels, width, height);
   }
 }
 
 (async () => {
   console.log('⚾ major-league-paperball starting');
 
-  runTick();
+  await runTick();
 
   CronJob.from({
     cronTime: '*/20 * * * * *',

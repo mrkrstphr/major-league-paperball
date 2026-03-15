@@ -32,7 +32,7 @@ const fontBold = fs.readFileSync(
   path.join(__dirname, '../assets/inter-bold.woff'),
 );
 
-export async function renderToImage(state: State): Promise<Buffer> {
+export async function renderToImage(state: State): Promise<{ png: Buffer; pixels: Uint8Array; width: number; height: number }> {
   const w = screenWidth();
   const h = screenHeight();
   const Component = COMPONENTS[state.mode] ?? Offline;
@@ -55,5 +55,13 @@ export async function renderToImage(state: State): Promise<Buffer> {
     fitTo: { mode: 'width', value: screenWidth() },
   });
 
-  return resvg.render().asPng();
+  const rendered = resvg.render();
+  return {
+    png: rendered.asPng(),
+    pixels: rendered.pixels,
+    width: rendered.width,
+    height: rendered.height,
+  };
 }
+
+export type RenderedFrame = Awaited<ReturnType<typeof renderToImage>>;
