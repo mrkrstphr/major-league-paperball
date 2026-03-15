@@ -4,7 +4,7 @@ import fs from 'fs';
 import { equals } from 'ramda';
 import getNextState from './app/engine/index';
 import { renderToImage } from './app/render';
-import { sendToDisplay } from './app/display';
+import { sendToDisplay } from './app/display/index';
 import { getState, setState } from './app/state';
 import {
   consoleDebug,
