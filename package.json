@@ -18,11 +18,13 @@
     "cron": "^4.4.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.1",
-    "node-libgpiod": "^0.6.0",
     "ramda": "^0.32.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "satori": "^0.19.2",
+    "satori": "^0.19.2"
+  },
+  "optionalDependencies": {
+    "node-libgpiod": "^0.6.0",
     "spi-device": "^3.1.2"
   },
   "devDependencies": {
