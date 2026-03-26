@@ -87,7 +87,9 @@ async function capture(): Promise<void> {
     }
 
     lastSavedSnapshot[gamePk] = snapshot;
-    const snapshotFile = join(gameDir, `livegame-${isoTimestamp()}.json`);
+    const gameEvent = liveGame.metaData?.gameEvents?.[0];
+    const eventSuffix = gameEvent ? `-${gameEvent}` : '';
+    const snapshotFile = join(gameDir, `livegame-${isoTimestamp()}${eventSuffix}.json`);
     await writeFile(snapshotFile, JSON.stringify(liveGame, null, 2));
 
     console.log(`[${new Date().toISOString()}] ${gamePk} (${status}) → ${snapshotFile}`);
