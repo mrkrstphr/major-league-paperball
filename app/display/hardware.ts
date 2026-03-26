@@ -68,11 +68,20 @@ type HW = {
 let hwPromise: Promise<HW> | undefined;
 
 export function getHardware(): Promise<HW> {
-  if (!hwPromise) hwPromise = openHardware();
+  if (!hwPromise) {
+    hwPromise = openHardware();
+    // If openHardware() fails, clear the promise so the next call retries
+    // rather than returning the same rejected promise forever.
+    hwPromise.catch(() => { hwPromise = undefined; });
+  }
   return hwPromise;
 }
 
 export function resetHardware(): void {
+  // Close the old SPI device before discarding the promise, to avoid leaking fds.
+  if (hwPromise) {
+    hwPromise.then((hw) => { hw.device.close(() => {}); }).catch(() => {});
+  }
   hwPromise = undefined;
 }
 
