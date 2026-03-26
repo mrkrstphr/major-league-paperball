@@ -1,11 +1,11 @@
 import React from 'react';
-import { font, headerBanner, SCREEN_PADDING } from './styles';
+import { font, headerBanner, row, SCREEN_PADDING } from './styles';
 import Boxscore from './partials/Boxscore';
 import GameHeader from './partials/GameHeader';
 
 type Props = Record<string, any>;
 
-export default function EndOfInning({ upNext, inningDescription, lastPlayDescription, boxscore, teams, awayTeam, homeTeam, weather }: Props) {
+export default function EndOfInning({ upNext, inningDescription, lastPlayDescription, boxscore, teams, awayTeam, homeTeam, weather, pitcher, batter }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', padding: SCREEN_PADDING, paddingBottom: 0 }}>
@@ -27,6 +27,21 @@ export default function EndOfInning({ upNext, inningDescription, lastPlayDescrip
             {lastPlayDescription}
           </div>
         )}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20, paddingBottom: 12 }}>
+          <div style={{ display: 'flex', fontSize: font.lg, fontWeight: 700 }}>Up Next</div>
+        </div>
+        <div style={{ ...row, justifyContent: 'space-between', gap: 32 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ display: 'flex', fontSize: font.sm }}>Pitching</div>
+            <div style={{ display: 'flex', fontSize: font.lg, fontWeight: 700 }}>{pitcher?.name}</div>
+            <div style={{ display: 'flex', fontSize: font.sm }}>{pitcher?.line}</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', fontSize: font.sm }}>Up to bat</div>
+            <div style={{ display: 'flex', fontSize: font.lg, fontWeight: 700 }}>{batter?.name}</div>
+            <div style={{ display: 'flex', fontSize: font.sm }}>{batter?.line}</div>
+          </div>
+        </div>
       </div>
     </div>
   );
