@@ -35,15 +35,12 @@ export async function sendToDisplay(
   const { LineConstructor: Line, chip, device } = await getHardware();
 
   // Lines are re-requested each call — libgpiod invalidates the request after
-  // the display's power-cycle, causing EPERM if we try to reuse them.
+  // the display's DEEP_SLEEP power-cycle. Hardware is always reset in finally
+  // so the next call opens a fresh chip after the power-down completes.
   const rst  = new Line(chip, RST_PIN);
   const dc   = new Line(chip, DC_PIN);
   const pwr  = new Line(chip, PWR_PIN);
   const busy = new Line(chip, BUSY_PIN);
-  rst.requestOutputMode();
-  dc.requestOutputMode();
-  pwr.requestOutputMode();
-  busy.requestInputMode();
 
   const spiWrite = makeSpiWrite(device);
 
@@ -57,14 +54,17 @@ export async function sendToDisplay(
   };
 
   try {
+    // requestOutputMode is inside try so EPERM here is caught and hardware is reset.
+    rst.requestOutputMode();
+    dc.requestOutputMode();
+    pwr.requestOutputMode();
+    busy.requestInputMode();
+
     consoleDebug(`Sending to display (EPD v${version})`);
     pwr.setValue(1);
     await VERSIONS[version].run(io, pixels, width, height);
   } catch (err: any) {
-    if (err?.errno === 1 || err?.code === 'EPERM') {
-      consoleDebug('EPERM on GPIO — resetting hardware singleton for next tick');
-      resetHardware();
-    }
+    consoleDebug('Error in sendToDisplay:', err?.code ?? err?.message);
     throw err;
   } finally {
     try { rst.release(); } catch { /* already released or invalid */ }
@@ -72,6 +72,9 @@ export async function sendToDisplay(
     try { busy.release(); } catch { /* already released or invalid */ }
     try { pwr.setValue(0); } catch { /* ignore — display may have self-powered off */ }
     try { pwr.release(); } catch { /* already released or invalid */ }
+    // Always reset — DEEP_SLEEP revokes libgpiod line requests, so open a fresh
+    // chip/SPI device on the next call rather than reusing the invalidated one.
+    resetHardware();
     displayRunning = false;
   }
 }
