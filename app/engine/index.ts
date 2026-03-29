@@ -11,10 +11,12 @@ import type { Cache } from './types';
 
 const cache: Cache = { schedule: undefined, gameEnded: {} };
 
+const SCHEDULE_REFETCH_MS = 2 * 60 * 60 * 1000; // 2 hours
+
 export const refetchTeamSchedule = async () => {
   const games = await getTeamSchedule(teamId());
 
-  cache.schedule = { date: today(), games };
+  cache.schedule = { date: today(), fetchedAt: new Date(), games };
 };
 
 export default async function getNextState(currentState: State) {
@@ -30,8 +32,12 @@ export default async function getNextState(currentState: State) {
     cache.team = await getTeamById(followedTeamId);
   }
 
-  const hasTodaysSchedule = cache.schedule && cache.schedule.date === today();
-  if (!hasTodaysSchedule) {
+  const scheduleStale =
+    !cache.schedule ||
+    cache.schedule.date !== today() ||
+    Date.now() - cache.schedule.fetchedAt.getTime() > SCHEDULE_REFETCH_MS;
+
+  if (scheduleStale) {
     await refetchTeamSchedule();
   }
 
