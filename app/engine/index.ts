@@ -1,9 +1,10 @@
+import { subMinutes } from 'date-fns';
 import { sortBy, splitEvery } from 'ramda';
 import { getTeamById, getTeamSchedule, getTeams } from '../api';
 import { State } from '../state';
 import { today } from '../utils';
-import { teamId } from '../utils/env';
-import { isGameInProgress, isGameStartingSoon } from '../utils/schedule';
+import { consoleDebug, gameEndDelay, teamId } from '../utils/env';
+import { isGameStartingSoon, isPotentiallyActive } from '../utils/schedule';
 import liveGameState from './liveGameState';
 import previewState from './previewState';
 import standingsState from './standingsState';
@@ -41,11 +42,21 @@ export default async function getNextState(currentState: State) {
     await refetchTeamSchedule();
   }
 
-  // if we're past a game start time and it's not final, return the live game state
-  const liveGame = cache.schedule && isGameInProgress(cache.schedule);
+  // if a game started recently, check the live feed to determine actual state
+  const liveGame = cache.schedule && isPotentiallyActive(cache.schedule);
 
   if (liveGame) {
-    return liveGameState(liveGame.gamePk, cache, currentState);
+    const gameEndedAt = cache.gameEnded[liveGame.gamePk];
+    const delayPassed =
+      gameEndedAt && gameEndedAt < subMinutes(new Date(), gameEndDelay());
+
+    if (delayPassed) {
+      // End-of-game delay has passed; refetch schedule and fall through to standings
+      consoleDebug(`Game end delay over, refetching schedule...`);
+      await refetchTeamSchedule();
+    } else {
+      return liveGameState(liveGame.gamePk, cache, currentState);
+    }
   }
 
   const startingSoon = cache.schedule && isGameStartingSoon(cache.schedule);

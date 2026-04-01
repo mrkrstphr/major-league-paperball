@@ -1,4 +1,3 @@
-import { subMinutes } from 'date-fns';
 import { mkdir, writeFile } from 'fs/promises';
 import { reverse, take } from 'ramda';
 import { getLiveGameFeed } from '../../api';
@@ -18,9 +17,8 @@ import {
   lastPlayWithDescription,
   scoringPlays,
 } from '../../utils';
-import { consoleDebug, debugDumpGame, gameEndDelay } from '../../utils/env';
+import { consoleDebug, debugDumpGame } from '../../utils/env';
 import { betweenInnings, isGameOver } from '../../utils/liveGame';
-import { refetchTeamSchedule } from '../index';
 import { Cache } from '../types';
 import endOfGame from './endOfGame';
 import endOfInning from './endOfInning';
@@ -32,16 +30,9 @@ export default async function liveGameState(
   cache: Cache,
   currentState: State,
 ) {
-  // if we've already noticed this game is over, return the final state...
+  // if we've already noticed this game is over, hold the final state until
+  // getNextState determines the delay has passed and stops routing here
   if (cache.gameEnded[gameId]) {
-    if (cache.gameEnded[gameId] < subMinutes(new Date(), gameEndDelay())) {
-      consoleDebug(`Game end delay over, refetching schedule...`);
-      if (cache.schedule?.games) {
-        // trigger a refetch of the schedule
-        await refetchTeamSchedule();
-      }
-    }
-
     return currentState;
   }
 
@@ -76,15 +67,11 @@ function getWinningTeamAndScore(game: LiveGame) {
 }
 
 export const processGameState = async (game: LiveGame, cache: Cache) => {
-  // if this game is over...
-  if (game.gameData.status.abstractGameCode === 'F') {
+  if (isGameOver(game)) {
     consoleDebug(`Noting game as ended`);
     if (!cache.gameEnded[game.gameData.id]) {
       cache.gameEnded[game.gameData.id] = new Date();
     }
-  }
-
-  if (isGameOver(game)) {
     return endOfGame(game);
   }
 

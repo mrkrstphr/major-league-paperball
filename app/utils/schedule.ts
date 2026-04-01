@@ -1,14 +1,27 @@
+import { addHours } from 'date-fns';
 import { Schedule } from '../types';
 
-export const isGameInProgress = (schedule: Schedule['dates'][0]) =>
-  schedule.games.find(
-    (game) =>
-      new Date(game.gameDate) <= new Date() &&
-      game.status.abstractGameCode !== 'F'
-  );
+const GAME_WINDOW_HOURS = 10;
 
-export const isGameStartingSoon = (schedule: Schedule['dates'][0]) =>
+// A game is potentially active if it started in the past and is within the
+// activity window. We intentionally ignore schedule status codes here -- the
+// live game feed is the authoritative source for real-time game state.
+export const isPotentiallyActive = (schedule: {
+  games: Schedule['dates'][0]['games'];
+}) =>
+  schedule.games.find((game) => {
+    const startTime = new Date(game.gameDate);
+    return (
+      startTime <= new Date() &&
+      new Date() <= addHours(startTime, GAME_WINDOW_HOURS)
+    );
+  });
+
+export const isGameStartingSoon = (schedule: {
+  games: Schedule['dates'][0]['games'];
+}) =>
   schedule.games.find(
     (game) =>
-      game.status.abstractGameCode === 'L' && game.status.codedGameState === 'P'
+      game.status.abstractGameCode === 'L' &&
+      game.status.codedGameState === 'P',
   );
