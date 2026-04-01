@@ -1,6 +1,6 @@
 import React from 'react';
 import { font, row } from '../styles';
-import { WeatherIcon, WindIcon, ClockIcon } from './icons';
+import { WeatherIcon, WindIcon, ClockIcon } from '../icons/index';
 
 type Weather = {
   condition: string;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { font } from '../styles';
+import { CircleOpen, CircleClosed } from '../icons/index';
 
 type Count = {
   balls: number;
@@ -12,17 +13,7 @@ type Props = {
 };
 
 function Circle({ filled }: { filled: boolean }) {
-  return (
-    <div
-      style={{
-        width: 14,
-        height: 14,
-        borderRadius: '50%',
-        border: '1px solid black',
-        backgroundColor: filled ? 'black' : 'transparent',
-      }}
-    />
-  );
+  return filled ? <CircleClosed /> : <CircleOpen />;
 }
 
 function CountRow({ label, filled, total }: { label: string; filled: number; total: number }) {
