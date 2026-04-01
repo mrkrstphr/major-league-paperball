@@ -36,9 +36,9 @@ export default function LiveGame(props: Props) {
               <BallsAndStrikes count={count ?? { balls: 0, strikes: 0, outs: 0 }} />
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'row', fontSize: font.lg, gap: 4 }}>
-              <span style={{ fontWeight: 700, flexShrink: 0 }}>Last Play:</span>
-              <span style={{ flex: 1, minWidth: 0 }}>{lastPlayDescription}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', fontSize: font.lg, gap: 2 }}>
+              <span style={{ fontWeight: 700 }}>Last Play:</span>
+              <span>{lastPlayDescription}</span>
             </div>
           </div>
 
