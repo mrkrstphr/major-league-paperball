@@ -26,10 +26,10 @@ const COMPONENTS: Record<string, React.FC<any>> = {
 
 // Load fonts once at module init
 const fontRegular = fs.readFileSync(
-  path.join(__dirname, '../assets/inter-regular.woff'),
+  path.join(__dirname, '../assets/silkscreen-regular.ttf'),
 );
 const fontBold = fs.readFileSync(
-  path.join(__dirname, '../assets/inter-bold.woff'),
+  path.join(__dirname, '../assets/silkscreen-bold.ttf'),
 );
 
 export async function renderToImage(state: State): Promise<{ png: Buffer; pixels: Uint8Array; width: number; height: number }> {
@@ -46,8 +46,8 @@ export async function renderToImage(state: State): Promise<{ png: Buffer; pixels
     width: screenWidth(),
     height: screenHeight(),
     fonts: [
-      { name: 'Inter', data: fontRegular, weight: 400, style: 'normal' },
-      { name: 'Inter', data: fontBold, weight: 700, style: 'normal' },
+      { name: 'Silkscreen', data: fontRegular, weight: 400, style: 'normal' },
+      { name: 'Silkscreen', data: fontBold, weight: 700, style: 'normal' },
     ],
   });
 
